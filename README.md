@@ -1,6 +1,6 @@
 # Alchemist
 
-An agentic framework for expediting research lab tasks.
+An agentic framework for expediting research lab tasks. Generate actionable reports based on literature search, produce reproducible workflows, and connect scientists to meaningful data. 
 
 | Agent | Command | Input | Output |
 | --- | --- | --- | --- |
