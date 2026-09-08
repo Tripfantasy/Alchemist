@@ -1,7 +1,6 @@
 # Alchemist
 
-Three Claude Code agents. Each takes a request in plain language and writes a
-report to its own `output/` as both Markdown and PDF.
+An agentic framework for expediting research lab tasks.
 
 | Agent | Command | Input | Output |
 | --- | --- | --- | --- |
