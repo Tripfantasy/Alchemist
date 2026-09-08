@@ -1,0 +1,101 @@
+# Alchemist -- single source of truth for what stays out of the repo.
+#
+# The rule of thumb: this repo ships the *agents* (prompts, workflows, skills,
+# scripts, resources). It does not ship what those agents produce on a local
+# run, or the environments they run in. Curated example outputs will be added
+# back deliberately, not by accident.
+
+
+# --- Credentials -------------------------------------------------------------
+# Never commit these. Secrets belong in the macOS Keychain.
+.env
+.env.*
+*.secret
+tokens.json
+credentials.json
+
+**/.claude/settings.local.json
+
+# forage/.claude/settings.json holds the Globus client and collection
+# UUIDs -- private infrastructure identifiers, not shareable. Cloners copy
+# settings.json.example (tracked) and fill in their own.
+**/.claude/settings.json
+!**/.claude/settings.json.example
+
+# Real institutional metadata: named requesters, lab names, IBC numbers and
+# internal filesystem paths. resources/metadata_example.csv ships instead --
+# same schema, synthetic rows -- so the mock demo runs without it.
+forage/resources/metadata.csv
+
+# Real internal project codes (SCI-######) mapped to project names -- a site's
+# research portfolio. project_codes.example.json ships instead.
+forage/resources/project_codes.json
+
+
+# NOTE ON THE **/ PREFIX BELOW
+# A pattern containing a slash is anchored to this file's directory, so a bare
+# "output/*" would only match a top-level output/ and would silently miss
+# brew/output/. The **/ prefix is what makes these match at any depth.
+# Verify any change with:  git status --short
+
+
+# --- Generated output --------------------------------------------------------
+# Every agent writes its reports to output/. All of it is a local run artifact:
+# dated .md/.pdf reports, plus the intermediate .html from render_report.py.
+# .gitkeep preserves the directory for a fresh clone. Applies to any agent
+# added later, not just the three here.
+#
+# EXCEPTION: a short, EXPLICIT allowlist of synthetic sample outputs, committed
+# so a cloner sees the format without running anything. Each says in its own
+# first line that it is synthetic.
+#
+# This list is deliberately not a glob. An earlier `!**/output/EXAMPLE_*`
+# pattern silently un-ignored a real run that happened to be named EXAMPLE_*,
+# and it carried a named requester, internal project codes and real paths.
+# Outputs can hold unpublished results, so a new sample gets added here by hand
+# after someone has actually read it.
+**/output/*
+!**/output/.gitkeep
+!distill/output/EXAMPLE_research_report.md
+!distill/output/EXAMPLE_research_report.pdf
+!brew/output/EXAMPLE_protocol.md
+!brew/output/EXAMPLE_protocol.pdf
+!forage/output/EXAMPLE_discovery_report.md
+!forage/output/EXAMPLE_discovery_report.pdf
+
+
+# --- forage: knowledge stores ------------------------------------------
+# Endpoint scan state. file_associations.jsonl is ~920 MB and inventory.jsonl
+# ~436 MB -- GitHub hard-rejects anything over 100 MB, so these can never be
+# tracked. The small rollups (ASSOCIATIONS.md, coverage.json, query_log.jsonl)
+# are regenerable from a scan and are ignored too. The one committed sample is
+# named explicitly, for the same reason as under output/.
+forage/knowledge/*
+!forage/knowledge/.gitkeep
+!forage/knowledge/EXAMPLE_ASSOCIATIONS.md
+
+
+# --- brew: downloaded data ----------------------------------------------
+# Public GEO downloads plus the probe.json / samples.csv that geo_probe.py
+# writes. Reproducible from the accession, and a single series can be tens of
+# GB. To ship a probe as an example, add:
+#   !brew/data/GSE252365/  and  !brew/data/**/probe.json
+brew/data/*
+!brew/data/.gitkeep
+
+
+# --- Python ------------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- R (brew emits .Rmd) ------------------------------------------------
+.Rhistory
+.RData
+.Rproj.user/
+
+# --- macOS -------------------------------------------------------------------
+.DS_Store

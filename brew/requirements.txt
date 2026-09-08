@@ -1,0 +1,15 @@
+# Paper reproduction agent -- the AGENT's own tooling only.
+#
+# Deliberately tiny. The notebooks this agent writes mirror the paper's own
+# stack (scanpy, Seurat, ...), and they declare their own environment; nothing
+# analytical is installed here, because the agent never runs the analysis.
+#
+#   python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+#
+# Markdown -> HTML for the PDF renderer. PDF generation itself uses headless
+# Chrome (already on this machine) with a cupsfilter fallback, so there is no
+# LaTeX/wkhtmltopdf/weasyprint dependency to install.
+markdown>=3.5
+
+# geo_probe.py and make_notebook.py are stdlib-only (urllib, json, csv) on
+# purpose -- accession probing must keep working when this venv is stale.

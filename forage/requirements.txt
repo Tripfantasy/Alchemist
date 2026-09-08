@@ -1,0 +1,11 @@
+# Globus discovery agent
+# Everything else is stdlib (Python 3.9+).
+#
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+globus-sdk>=3.30,<4
+
+# Markdown -> HTML for the PDF renderer. PDF generation itself uses headless
+# Chrome (already on this machine) with a cupsfilter fallback, so there is no
+# LaTeX/wkhtmltopdf/weasyprint dependency to install.
+markdown>=3.5

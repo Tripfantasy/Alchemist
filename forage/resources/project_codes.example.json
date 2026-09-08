@@ -1,0 +1,5 @@
+{
+  "_comment": "Site-specific project codes: the identifier in the CSV's Scientific Projects column mapped to a human label. Copy to project_codes.json (gitignored) and fill in your own. Optional -- an empty map just means no code-based labelling.",
+  "SCI-000001": "Example project one",
+  "SCI-000002": "Example project two"
+}

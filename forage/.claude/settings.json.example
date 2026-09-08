@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Copy this file to settings.json and fill in your own UUIDs.",
+    "settings.json is gitignored -- it holds identifiers specific to your",
+    "Globus client and collection, and must never be committed.",
+    "The client SECRET does not go here. It lives in the macOS Keychain:",
+    "  security add-generic-password -a \"$USER\" -s globus_agent_client_secret -w",
+    "New Claude Code sessions pick this file up automatically; a session that",
+    "was already running when you created it will not."
+  ],
+  "env": {
+    "GLOBUS_AGENT_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "GLOBUS_AGENT_COLLECTION_ID": "00000000-0000-0000-0000-000000000000"
+  }
+}

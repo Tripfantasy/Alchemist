@@ -1,0 +1,746 @@
+{
+  "version": "6",
+  "_comment": [
+    "Controlled vocabulary for inferring meaning from path segments when a file",
+    "has no MOLNG/flowcell match in metadata.csv.",
+    "",
+    "Seeded from the vocabulary actually present in the CSV's Scientific Projects,",
+    "Analysis Goals, and Project Type columns. Edit freely -- build_index.py reads",
+    "this at runtime and stamps vocab_version onto every inferred association, so",
+    "the knowledge store records which dictionary produced a given claim.",
+    "",
+    "Matching is case-insensitive against tokens split out of each path segment.",
+    "Anything in 'ambiguous' is refused even if it matches, per the rule that a",
+    "too-vague token should not be interpreted at all.",
+    "",
+    "v6 (2026-09-04, from the H19 stroke discovery run): the lab writes the",
+    "photothrombotic stroke model as 'pt', never as 'stroke'. A search on 'stroke'",
+    "returned 39 paths; the actual imaging cohort is ~1,740 files and 375 GB named",
+    "with 'pt'. But bare 'pt' is only ~40% correct on this collection -- it also",
+    "means PT_Rabies (1,630), EndNote 'Pt 15' page ranges (1,194) and PT_Model",
+    "deep-learning checkpoints (112). So 'pt' is REFUSED in 'ambiguous', and the",
+    "model is captured through bigrams (pt_h19, lesion_pt, pt_24h ...) that the",
+    "tokenizer's adjacent-pair pass already produces. Same reasoning refuses",
+    "'peri' (all 17 hits are a person's name, not peri-infarct),",
+    "'nc' (negative control vs neural crest) and '7d' (a plasmid file, not 7 days).",
+    "Neurovascular markers were absent entirely and are now in 'gene'.",
+    "",
+    "Known residue in v6: 'pt7' also matches journal citations written '(Pt 7)'",
+    "-- 4 reference PDFs in an EndNote library folder are tagged photothrombotic.",
+    "Kept anyway: 174 correct vs 4 wrong, and the 4 are non-data reference PDFs.",
+    "Measured precision of the photothrombotic terms overall is 1050/1054."
+  ],
+  "tissue": {
+    "oe": "olfactory epithelium",
+    "moe": "main olfactory epithelium",
+    "ob": "olfactory bulb",
+    "vno": "vomeronasal organ",
+    "aob": "accessory olfactory bulb",
+    "mob": "main olfactory bulb",
+    "osn": "olfactory sensory neuron",
+    "vsn": "vomeronasal sensory neuron",
+    "cortex": "cortex",
+    "hipp": "hippocampus",
+    "hippocampus": "hippocampus",
+    "organoid": "cerebral organoid",
+    "organoids": "cerebral organoid",
+    "tg": "trigeminal ganglion",
+    "gg": "Grueneberg ganglion",
+    "se": "septal organ",
+    "drg": "dorsal root ganglion",
+    "drgs": "dorsal root ganglion",
+    "spinal": "spinal cord",
+    "striatum": "striatum",
+    "amygdala": "amygdala",
+    "hypothalamus": "hypothalamus",
+    "retina": "retina",
+    "turbinate": "nasal turbinate",
+    "septum": "septum",
+    "brain": "brain",
+    "nose": "nasal tissue",
+    "mucosa": "olfactory mucosa",
+    "epithelium": "epithelium",
+    "vascular": "vasculature",
+    "vasculature": "vasculature",
+    "endothelium": "endothelium",
+    "endothelial": "endothelium"
+  },
+  "assay": {
+    "scrna": "single-cell RNA-seq",
+    "scrnaseq": "single-cell RNA-seq",
+    "snrna": "single-nucleus RNA-seq",
+    "snrnaseq": "single-nucleus RNA-seq",
+    "rnaseq": "bulk RNA-seq",
+    "rna": "RNA-seq",
+    "atac": "ATAC-seq",
+    "scatac": "single-cell ATAC-seq",
+    "multiome": "10x Multiome (RNA+ATAC)",
+    "cellplex": "10x CellPlex multiplexed scRNA-seq",
+    "xenium": "10x Xenium in situ",
+    "slideseq": "SLIDE-seq spatial",
+    "slide": "SLIDE-seq spatial",
+    "puck": "SLIDE-seq puck (spatial array)",
+    "curio": "Curio Seeker spatial",
+    "stereoseq": "Stereo-seq spatial",
+    "parse": "Parse combinatorial indexing scRNA-seq",
+    "dnaseq": "DNA-seq",
+    "wgs": "whole-genome sequencing",
+    "exome": "exome capture",
+    "chip": "ChIP-seq",
+    "cut": "CUT&RUN / CUT&Tag",
+    "smallrna": "small RNA-seq",
+    "circrna": "circular RNA-seq",
+    "cirrna": "circular RNA-seq",
+    "flex": "10x Flex fixed RNA profiling",
+    "proteomics": "proteomics",
+    "proteome": "proteomics",
+    "massspec": "mass spectrometry",
+    "lcms": "LC-MS/MS",
+    "tmt": "TMT-labelled proteomics",
+    "phosphoproteomics": "phosphoproteomics",
+    "em": "electron microscopy",
+    "tem": "transmission electron microscopy",
+    "sem": "scanning electron microscopy",
+    "cryoem": "cryo-EM",
+    "negativestain": "negative-stain EM",
+    "confocal": "confocal microscopy",
+    "lightsheet": "light-sheet microscopy",
+    "slidescanner": "slide scanner imaging",
+    "imaris": "Imaris image analysis",
+    "ihc": "immunohistochemistry",
+    "immunostaining": "immunostaining",
+    "fish": "fluorescence in situ hybridization",
+    "smfish": "single-molecule FISH",
+    "hcr": "HCR in situ",
+    "insitu": "in situ hybridization",
+    "ephys": "electrophysiology",
+    "patch": "patch-clamp",
+    "miniscope": "miniscope calcium imaging",
+    "minis": "miniscope calcium imaging",
+    "calcium": "calcium imaging",
+    "opto": "optogenetics",
+    "optogenetics": "optogenetics",
+    "deeplabcut": "DeepLabCut pose tracking",
+    "tubetest": "tube test (social dominance)",
+    "abba": "ABBA atlas registration",
+    "cutrun": "CUT&RUN",
+    "cuttag": "CUT&Tag",
+    "neuralynx": "Neuralynx in vivo electrophysiology",
+    "intan": "Intan electrophysiology",
+    "olympus": "Olympus microscopy",
+    "twophoton": "two-photon imaging",
+    "2p": "two-photon imaging",
+    "widefield": "widefield imaging",
+    "smhcr": "single-molecule HCR in situ"
+  },
+  "modifier": {
+    "sc": "single-cell",
+    "sn": "single-nucleus",
+    "bulk": "bulk",
+    "spatial": "spatial",
+    "oe_": "olfactory epithelium",
+    "ko": "knockout",
+    "wt": "wild type",
+    "het": "heterozygote",
+    "hom": "homozygote",
+    "cko": "conditional knockout",
+    "tg": "transgenic",
+    "oex": "overexpression",
+    "oe-x": "overexpression",
+    "ctrl": "control",
+    "control": "control",
+    "mut": "mutant",
+    "crispr": "CRISPR-edited",
+    "homo": "homozygote",
+    "noprobe": "no-probe negative control"
+  },
+  "gene": {
+    "h19": "H19",
+    "apoe": "APOE",
+    "apoe3": "APOE3",
+    "apoe4": "APOE4",
+    "ab42": "amyloid-beta 42",
+    "abeta": "amyloid-beta",
+    "omp": "OMP (olfactory marker protein)",
+    "or": "odorant receptor",
+    "v1r": "V1R vomeronasal receptor",
+    "v2r": "V2R vomeronasal receptor",
+    "ieg": "immediate early gene",
+    "fos": "cFos",
+    "cfos": "cFos",
+    "arc": "Arc",
+    "bcl11b": "Bcl11b",
+    "lhx2": "Lhx2",
+    "adar": "ADAR",
+    "npas4": "Npas4",
+    "fzd": "Frizzled",
+    "fzd1": "Fzd1",
+    "tdt": "tdTomato reporter",
+    "tdtomato": "tdTomato reporter",
+    "gfp": "GFP reporter",
+    "cre": "Cre driver",
+    "ngn": "Neurogenin",
+    "apex2": "APEX2 proximity labelling",
+    "dat": "DAT (dopamine transporter)",
+    "g6f": "GCaMP6f",
+    "gcamp": "GCaMP",
+    "gcamp6f": "GCaMP6f",
+    "cd31": "CD31 / PECAM-1 (endothelial marker)",
+    "pecam": "PECAM-1 (endothelial marker)",
+    "pecam1": "PECAM-1 (endothelial marker)",
+    "pdgfra": "PDGFRA (pericyte / OPC marker)",
+    "gfap": "GFAP (astrocyte marker)",
+    "iba1": "IBA1 (microglial marker)",
+    "ki67": "Ki67 (proliferation marker)",
+    "caspase3": "cleaved caspase-3 (apoptosis marker)",
+    "neun": "NeuN (neuronal marker)",
+    "sox2": "SOX2 (progenitor marker)",
+    "bgal": "beta-galactosidase reporter",
+    "brdu": "BrdU (proliferation label)"
+  },
+  "species": {
+    "mm": "mouse",
+    "mouse": "mouse",
+    "mus": "mouse",
+    "mm10": "mouse (mm10)",
+    "mm39": "mouse (mm39)",
+    "grcm38": "mouse (GRCm38)",
+    "hs": "human",
+    "human": "human",
+    "hg38": "human (hg38)",
+    "grch38": "human (GRCh38)",
+    "paddlefish": "paddlefish",
+    "polyodon": "paddlefish",
+    "rat": "rat",
+    "rattus": "rat",
+    "grcr8": "rat (GRCr8)",
+    "zebrafish": "zebrafish",
+    "danio": "zebrafish"
+  },
+  "condition": {
+    "criticalperiod": "critical period",
+    "cp": "critical period",
+    "pheromone": "pheromone exposure",
+    "odor": "odor stimulation",
+    "stim": "stimulation",
+    "naive": "naive / unstimulated",
+    "alzheimers": "Alzheimer's disease model",
+    "ad": "Alzheimer's disease model",
+    "behavior": "behavioral experiment",
+    "development": "developmental series",
+    "stroke": "stroke model",
+    "covid": "COVID-19",
+    "sars": "SARS-CoV-2",
+    "ev": "extracellular vesicles",
+    "injury": "injury model",
+    "regeneration": "regeneration",
+    "social": "social behavior",
+    "dominance": "social dominance",
+    "nonsocial": "non-social control",
+    "innate": "innate behavior",
+    "breathing": "respiration",
+    "photothrombotic": "photothrombotic stroke",
+    "ischemia": "ischemic stroke",
+    "ischemic": "ischemic stroke",
+    "infarct": "infarct",
+    "lesion": "lesion",
+    "nolesion": "non-lesion control",
+    "poststroke": "post-stroke",
+    "dpl": "days post lesion",
+    "lesionpt": "photothrombotic stroke",
+    "pth19": "photothrombotic stroke",
+    "ptgfap": "photothrombotic stroke",
+    "ptneun": "photothrombotic stroke",
+    "ptpdgfra": "photothrombotic stroke",
+    "ptnoprobe": "photothrombotic stroke",
+    "ptfish": "photothrombotic stroke",
+    "pt7": "photothrombotic stroke, 7 days post",
+    "pt24h": "photothrombotic stroke, 24 h post",
+    "pt72h": "photothrombotic stroke, 72 h post"
+  },
+  "stage": {
+    "e11": "embryonic day 11",
+    "e12": "embryonic day 12",
+    "e13": "embryonic day 13",
+    "e14": "embryonic day 14",
+    "e15": "embryonic day 15",
+    "e16": "embryonic day 16",
+    "e18": "embryonic day 18",
+    "p0": "postnatal day 0",
+    "p3": "postnatal day 3",
+    "p4": "postnatal day 4",
+    "p7": "postnatal day 7",
+    "p8": "postnatal day 8",
+    "p10": "postnatal day 10",
+    "p12": "postnatal day 12",
+    "p14": "postnatal day 14",
+    "p16": "postnatal day 16",
+    "p21": "postnatal day 21",
+    "p28": "postnatal day 28",
+    "p56": "postnatal day 56",
+    "adult": "adult",
+    "p5": "postnatal day 5",
+    "24h": "24 hours post-injury",
+    "24hr": "24 hours post-injury",
+    "72h": "72 hours post-injury",
+    "72hr": "72 hours post-injury"
+  },
+  "project_codes": {},
+  "ambiguous": [
+    "1",
+    "2",
+    "3",
+    "7d",
+    "a",
+    "all",
+    "analysis",
+    "archive",
+    "axon",
+    "axons",
+    "b",
+    "backup",
+    "bak",
+    "batch",
+    "bin",
+    "bkp",
+    "build",
+    "builds",
+    "c",
+    "clean",
+    "cleaned",
+    "code",
+    "content",
+    "contents",
+    "copy",
+    "data",
+    "delete",
+    "demo",
+    "dev",
+    "devel",
+    "dir",
+    "download",
+    "downloads",
+    "files",
+    "final",
+    "final2",
+    "folder",
+    "fun",
+    "group",
+    "home",
+    "homework",
+    "image",
+    "images",
+    "input",
+    "lab",
+    "libraries",
+    "library",
+    "log",
+    "logs",
+    "manual",
+    "manuals",
+    "meeting",
+    "meetings",
+    "merge",
+    "merged",
+    "misc",
+    "my",
+    "nc",
+    "new",
+    "new folder",
+    "newfolder",
+    "note",
+    "notes",
+    "old",
+    "other",
+    "output",
+    "outputs",
+    "paper",
+    "papers",
+    "part1",
+    "part2",
+    "part3",
+    "part4",
+    "peri",
+    "presentation",
+    "presentations",
+    "processed",
+    "project",
+    "projects",
+    "pt",
+    "raw",
+    "rds",
+    "re",
+    "results",
+    "run",
+    "runs",
+    "scratch",
+    "script",
+    "scripts",
+    "share",
+    "shared",
+    "stuff",
+    "temp",
+    "test",
+    "tmp",
+    "todo",
+    "unsorted",
+    "untitled",
+    "upload",
+    "user",
+    "users",
+    "v1",
+    "v2",
+    "v3",
+    "work",
+    "working",
+    "x",
+    "y",
+    "z"
+  ],
+  "extension_roles": {
+    ".fastq.gz": {
+      "role": "raw reads",
+      "group": "sequencing"
+    },
+    ".fq.gz": {
+      "role": "raw reads",
+      "group": "sequencing"
+    },
+    ".fastq": {
+      "role": "raw reads",
+      "group": "sequencing"
+    },
+    ".bam": {
+      "role": "aligned reads",
+      "group": "sequencing"
+    },
+    ".cram": {
+      "role": "aligned reads",
+      "group": "sequencing"
+    },
+    ".bai": {
+      "role": "alignment index",
+      "group": "sequencing"
+    },
+    ".vcf": {
+      "role": "variant calls",
+      "group": "sequencing"
+    },
+    ".vcf.gz": {
+      "role": "variant calls",
+      "group": "sequencing"
+    },
+    ".bed": {
+      "role": "genomic intervals",
+      "group": "sequencing"
+    },
+    ".bw": {
+      "role": "coverage track",
+      "group": "sequencing"
+    },
+    ".bigwig": {
+      "role": "coverage track",
+      "group": "sequencing"
+    },
+    ".h5": {
+      "role": "HDF5 matrix",
+      "group": "omics"
+    },
+    ".h5ad": {
+      "role": "AnnData single-cell object",
+      "group": "omics"
+    },
+    ".h5seurat": {
+      "role": "Seurat object",
+      "group": "omics"
+    },
+    ".rds": {
+      "role": "R object (often Seurat)",
+      "group": "omics"
+    },
+    ".loom": {
+      "role": "Loom single-cell matrix",
+      "group": "omics"
+    },
+    ".mtx": {
+      "role": "sparse count matrix",
+      "group": "omics"
+    },
+    ".mtx.gz": {
+      "role": "sparse count matrix",
+      "group": "omics"
+    },
+    ".zarr": {
+      "role": "Zarr array store",
+      "group": "omics"
+    },
+    ".nii": {
+      "role": "NIfTI volume",
+      "group": "neuroimaging"
+    },
+    ".nii.gz": {
+      "role": "NIfTI volume",
+      "group": "neuroimaging"
+    },
+    ".dcm": {
+      "role": "DICOM image",
+      "group": "neuroimaging"
+    },
+    ".mgz": {
+      "role": "FreeSurfer volume",
+      "group": "neuroimaging"
+    },
+    ".gii": {
+      "role": "GIFTI surface",
+      "group": "neuroimaging"
+    },
+    ".czi": {
+      "role": "Zeiss microscopy image",
+      "group": "imaging"
+    },
+    ".lif": {
+      "role": "Leica microscopy image",
+      "group": "imaging"
+    },
+    ".nd2": {
+      "role": "Nikon microscopy image",
+      "group": "imaging"
+    },
+    ".tif": {
+      "role": "TIFF image",
+      "group": "imaging"
+    },
+    ".tiff": {
+      "role": "TIFF image",
+      "group": "imaging"
+    },
+    ".ome.tif": {
+      "role": "OME-TIFF image",
+      "group": "imaging"
+    },
+    ".csv": {
+      "role": "table",
+      "group": "tabular"
+    },
+    ".tsv": {
+      "role": "table",
+      "group": "tabular"
+    },
+    ".xlsx": {
+      "role": "spreadsheet",
+      "group": "tabular"
+    },
+    ".parquet": {
+      "role": "columnar table",
+      "group": "tabular"
+    },
+    ".json": {
+      "role": "structured metadata",
+      "group": "docs"
+    },
+    ".yaml": {
+      "role": "config / metadata",
+      "group": "docs"
+    },
+    ".yml": {
+      "role": "config / metadata",
+      "group": "docs"
+    },
+    ".md": {
+      "role": "documentation",
+      "group": "docs"
+    },
+    ".txt": {
+      "role": "text / notes",
+      "group": "docs"
+    },
+    ".pdf": {
+      "role": "report / figure",
+      "group": "docs"
+    },
+    ".html": {
+      "role": "rendered report",
+      "group": "docs"
+    },
+    ".rmd": {
+      "role": "R Markdown analysis",
+      "group": "code"
+    },
+    ".r": {
+      "role": "R script",
+      "group": "code"
+    },
+    ".py": {
+      "role": "Python script",
+      "group": "code"
+    },
+    ".ipynb": {
+      "role": "Jupyter notebook",
+      "group": "code"
+    },
+    ".sh": {
+      "role": "shell script",
+      "group": "code"
+    },
+    ".nf": {
+      "role": "Nextflow workflow",
+      "group": "code"
+    }
+  },
+  "type_groups": {
+    "neuroimaging": [
+      ".nii",
+      ".nii.gz",
+      ".dcm",
+      ".mgz",
+      ".gii",
+      ".czi",
+      ".lif",
+      ".nd2",
+      ".tif",
+      ".tiff",
+      ".ome.tif"
+    ],
+    "sequencing": [
+      ".fastq.gz",
+      ".fq.gz",
+      ".fastq",
+      ".bam",
+      ".cram",
+      ".bai",
+      ".vcf",
+      ".vcf.gz",
+      ".bed",
+      ".bw",
+      ".bigwig"
+    ],
+    "omics": [
+      ".h5",
+      ".h5ad",
+      ".h5seurat",
+      ".rds",
+      ".loom",
+      ".mtx",
+      ".mtx.gz",
+      ".zarr"
+    ],
+    "tabular": [
+      ".csv",
+      ".tsv",
+      ".xlsx",
+      ".parquet"
+    ],
+    "docs": [
+      ".json",
+      ".yaml",
+      ".yml",
+      ".md",
+      ".txt",
+      ".pdf",
+      ".html"
+    ],
+    "code": [
+      ".rmd",
+      ".r",
+      ".py",
+      ".ipynb",
+      ".sh",
+      ".nf"
+    ]
+  },
+  "instrument_bundles": {
+    "_comment": [
+      "Per-channel / per-frame instrument output. These formats write one file",
+      "per channel, tile, or frame, so a single recording session yields dozens",
+      "to hundreds of near-identical files. Indexing them individually buries",
+      "real results and inflates the 'unknown' tier with machine output.",
+      "",
+      "When a directory holds at least `threshold` files of a given extension,",
+      "build_index.py collapses them into ONE session-level record carrying the",
+      "file count and total size. Thresholds are calibrated from the observed",
+      "per-directory distribution on this collection -- .tif and .jpg are set",
+      "high because small sets of those are usually figures, not session data.",
+      "",
+      "v6: .svg added -- a single Xenium output bundle writes 1,265 per-cluster",
+      "enrichment SVGs (category_network_plot, top_terms_barplot), which otherwise",
+      "swamp the real matrices in the same directory."
+    ],
+    "thresholds": {
+      ".ncs": 4,
+      ".nse": 4,
+      ".ntt": 4,
+      ".nev": 4,
+      ".nvt": 4,
+      ".oir": 8,
+      ".dcm": 20,
+      ".tif": 50,
+      ".tiff": 50,
+      ".jpg": 50,
+      ".jpeg": 50,
+      ".png": 50,
+      ".svg": 50
+    },
+    "labels": {
+      ".ncs": "Neuralynx continuous-channel recording session",
+      ".nse": "Neuralynx spike-channel recording session",
+      ".ntt": "Neuralynx tetrode recording session",
+      ".nev": "Neuralynx event file",
+      ".nvt": "Neuralynx video-tracking session",
+      ".oir": "Olympus OIR imaging session",
+      ".dcm": "DICOM image series",
+      ".tif": "TIFF image series",
+      ".tiff": "TIFF image series",
+      ".jpg": "JPEG image series",
+      ".jpeg": "JPEG image series",
+      ".png": "PNG image series",
+      ".svg": "SVG figure series"
+    }
+  },
+  "non_data_extensions": {
+    "_comment": [
+      "Presentations, documents, system junk and design files. These reach the",
+      "'unknown' tier unless a vocabulary term appears in the FILENAME itself,",
+      "because otherwise every .pptx under a biologically-named folder is",
+      "reported as that biology."
+    ],
+    "extensions": [
+      ".pptx",
+      ".ppt",
+      ".docx",
+      ".doc",
+      ".odt",
+      ".pages",
+      ".key",
+      ".numbers",
+      ".psd",
+      ".ai",
+      ".eps",
+      ".indd",
+      ".exe",
+      ".dmg",
+      ".pkg",
+      ".app",
+      ".db",
+      ".ini",
+      ".lnk",
+      ".url",
+      ".tmp",
+      ".log",
+      ".opj",
+      ".xls"
+    ],
+    "filenames": [
+      "thumbs.db",
+      ".ds_store",
+      "desktop.ini",
+      "icon\r",
+      ".localized"
+    ],
+    "filename_prefixes": [
+      "~$",
+      "untitled",
+      "presentation1",
+      "new microsoft"
+    ]
+  }
+}
