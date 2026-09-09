@@ -16,7 +16,9 @@
 
 - **Covered:** <subtopics, time window, systems/domains — from intake>
 - **Excluded:** <what was deliberately left out, so the limits are visible>
-- **Assumptions:** <anything inferred rather than confirmed; omit if none>
+- **Sample context:** <organism · tissue/region · genotype/condition · age/stage — from intake slot S. Omit only if the topic referenced no analysis output.>
+- **Local prior:** none — <or: `/path/to/file` (what it is, what it contributed). Never counted in the source total.>
+- **Assumptions:** <anything inferred rather than confirmed, including anything intake did not ask. Omit if none.>
 - **Sources:** N total (X peer-reviewed, Y preprint, Z other) · window: <years>
 
 ## Findings

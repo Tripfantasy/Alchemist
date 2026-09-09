@@ -35,7 +35,17 @@ which is the single source of truth - read it, do not work from memory.
   UUID into a doc, script, workflow or report, and never echo one into output/.
   The client secret is in the macOS Keychain under globus_agent_client_secret.
 - A full scan takes ~3 hours at --depth 5. Reuse knowledge/inventory.jsonl
-  unless the roots changed.
+  unless the roots changed - its first line is a scan_meta header recording
+  which roots, depth and types it covers, so check that instead of guessing.
+- NEVER launch a scan without scoping it first. Survey the tree at --depth 2,
+  show the researcher the actual top-level directories with their real cost,
+  and scan only what they pick. --path is repeatable. "Scan everything" is a
+  three-hour answer to a question that usually needs two directories.
+- resources/vocab.json SHIPS POPULATED (v6, ~250 terms) - first runs do not
+  build it from scratch. It is seeded from THIS lab's metadata.csv though, so
+  its refusals in `ambiguous` (pt, peri, nc, 7d) are collection-specific
+  judgments with their evidence recorded in `_comment`. On a new collection,
+  re-derive them rather than inheriting them.
 
 # Project Structure
 

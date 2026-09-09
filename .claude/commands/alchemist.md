@@ -20,7 +20,11 @@ If that is empty, ask what they are trying to do before routing anything.
 - **Route, do not execute.** Hand back the agent, the `cd`, and the command.
   Never carry out the agent's workflow from here — the root `CLAUDE.md` explains
   why, and the reasons are load-bearing.
-- Name what the agent will ask first, so the intake round is expected.
+- Name what the agent will ask first, so the intake round is expected. That
+  includes the bias-reporting question: every agent asks it once per session
+  before starting, as a separate question that does not consume an intake slot.
+  Do not answer it on the user's behalf, and do not tell them to run a command —
+  the agent asks and records it itself.
 - If the request spans agents, give an ordered sequence and say what the person
   decides between steps. The handoffs are manual by design.
 - If none of the three fit, say so and point at what the nearest one actually

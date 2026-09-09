@@ -324,6 +324,129 @@ def _resolve_tier(files: List[Dict], has_sra: bool) -> Dict:
 
 
 # --------------------------------------------------------------------------
+# processing state
+# --------------------------------------------------------------------------
+#
+# Whether the deposit has ALREADY had cell-calling and QC filtering applied.
+# This decides the shape of the reproduction: re-running a QC step over an
+# already-filtered matrix double-filters it, and the notebook then reports a
+# cell count below the paper's for a reason no one can see. See
+# workflows/etl_geo.md Step 2b -- the agent branches on `state` to decide
+# whether QC cells ship live or commented.
+#
+# Filename evidence only, plus whatever the series text asserts. This is an
+# inference, never a fact: the file header is the only proof, and reading it
+# means downloading, which this project does not do. `state` therefore feeds an
+# [inferred] tier step -- never a `stated` one.
+
+PROCESSED_PATTERNS = (
+    "filtered_feature_bc", "filtered_gene_bc", "filtered_peak_bc",
+    "_filtered", "filtered_", "_qc", "qc_", "postqc", "post_qc",
+    "_clean", "cleaned", "_singlet", "singlets", "doubletfilt",
+    "_annotated", "annotation", "celltype", "cell_type", "_metadata",
+    "_clusters", "_umap", "_tsne", "_seurat", "_processed",
+)
+
+# NOT a bare "_raw" here. GEO names EVERY series-level bundle "<GSE>_RAW.tar"
+# as a naming convention, whatever is inside it -- GSE252365_RAW.tar holds
+# processed count tables. A bare "_raw." pattern classified that series as raw
+# droplets and would have shipped a full QC section against already-filtered
+# data. Match the CellRanger matrix names and explicit count-table names only.
+RAW_PATTERNS = ("raw_feature_bc", "raw_gene_bc", "unfiltered",
+                "raw_count", "rawcount", "_raw_matrix", "raw_umi")
+
+# The GEO bundle convention, which tells you nothing about processing state.
+BUNDLE_RE = re.compile(r"_raw\.tar(\.gz)?$", re.I)
+
+# Series-text assertions. Matched against summary + overall_design, lowercased.
+PROCESSED_TEXT = (
+    "after quality control", "after qc", "quality-control filtered",
+    "low-quality cells were removed", "cells were filtered",
+    "doublets were removed", "doublet removal", "filtered to retain",
+    "passing quality control", "post-quality-control",
+)
+
+
+def _resolve_processing(files: List[Dict], fmt: Dict, text: str) -> Dict:
+    """Infer whether the deposited matrices are already QC-filtered.
+
+    Returns state in {processed, raw, mixed, unknown} plus the evidence that
+    produced it, so a report can cite a filename instead of hedging.
+    """
+    names = [f["name"] for f in files]
+    low = text.lower()
+
+    # A bundle hides its contents, so it can carry neither kind of evidence.
+    bundles = [n for n in names if BUNDLE_RE.search(n)]
+    visible = [n for n in names if n not in bundles]
+
+    proc_hits = [n for n in visible
+                 if any(p in n.lower() for p in PROCESSED_PATTERNS)]
+    raw_hits = [n for n in visible
+                if any(p in n.lower() for p in RAW_PATTERNS)]
+    text_hits = [p for p in PROCESSED_TEXT if p in low]
+
+    # A Tier 1 object is processed by definition -- it carries the authors'
+    # clustering, which cannot exist before their QC ran.
+    tier1 = [n for n, t in (fmt.get("by_file") or {}).items() if t == 1]
+
+    processed = bool(proc_hits or tier1 or text_hits)
+    raw = bool(raw_hits)
+
+    if processed and raw:
+        state = "mixed"
+    elif processed:
+        state = "processed"
+    elif raw:
+        state = "raw"
+    else:
+        state = "unknown"
+
+    evidence = []
+    if tier1:
+        evidence.append({"signal": "tier-1 object carries the authors' own "
+                                   "clustering, so their QC already ran",
+                         "files": tier1})
+    if proc_hits:
+        evidence.append({"signal": "filename indicates cell-called or "
+                                   "QC-filtered output", "files": proc_hits})
+    if raw_hits:
+        evidence.append({"signal": "filename indicates raw droplets, "
+                                   "pre-cell-calling", "files": raw_hits})
+    if text_hits:
+        evidence.append({"signal": "series text asserts QC was applied "
+                                   "upstream: \"{}\"".format(text_hits[0]),
+                         "files": []})
+    if bundles and state == "unknown":
+        evidence.append({"signal": "contents hidden inside a GEO _RAW.tar "
+                                   "bundle -- the name is a GEO convention, "
+                                   "NOT a statement that the data is raw. "
+                                   "List the archive before deciding",
+                         "files": bundles})
+
+    guidance = {
+        "processed": "QC/filtering appears ALREADY APPLIED. Ship the QC cells "
+                     "COMMENTED, with the paper's thresholds recorded in them "
+                     "and a note on when to uncomment. Re-running them here "
+                     "double-filters and silently undercounts cells.",
+        "raw": "Raw droplets. QC cells ship LIVE -- cell-calling and filtering "
+               "are genuinely part of this reproduction.",
+        "mixed": "BOTH raw and processed files are deposited. Decide by target "
+                 "figure, not by tier: start from raw to verify the authors' "
+                 "pipeline, from processed to build on their result. Say which "
+                 "you chose and why.",
+        "unknown": "No filename or series-text signal either way. Ship QC cells "
+                   "LIVE but flag the uncertainty: the first ETL cell should "
+                   "print matrix dimensions, and a cell count already close to "
+                   "the paper's post-QC number means the deposit was filtered "
+                   "and the QC cells must be commented out.",
+    }[state]
+
+    return {"state": state, "evidence": evidence, "guidance": guidance,
+            "inferred": True}
+
+
+# --------------------------------------------------------------------------
 # probe
 # --------------------------------------------------------------------------
 
@@ -400,6 +523,9 @@ def probe_series(accession: str, want_sizes: bool = True) -> Dict:
         "warnings": [],
         "probed_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
+    result["processing"] = _resolve_processing(
+        files, result["format"],
+        "{} {}".format(result["summary"], result["overall_design"]))
 
     if len(result["types"]) > 1:
         result["warnings"].append(
@@ -464,6 +590,16 @@ def print_summary(p: Dict) -> None:
         print("    ! {}".format(flag["note"]))
         for name in flag["files"][:4]:
             print("        {}".format(name))
+
+    proc = p.get("processing") or {}
+    if proc:
+        print("\n  processing state: {}  [inferred from filenames/series text]"
+              .format(proc["state"].upper()))
+        for ev in proc["evidence"]:
+            print("    - {}".format(ev["signal"]))
+            for name in ev["files"][:4]:
+                print("        {}".format(name))
+        print("    => {}".format(proc["guidance"]))
 
     print("\n  supplementary files ({}, {}):".format(
         len(p["suppl_files"]), _human(p["suppl_total_bytes"])))

@@ -19,8 +19,8 @@ Fixed, so every notebook in `output/` reads the same way:
 | 0 | **Header** (markdown) | Citation + DOI, what this reproduces (Fig. N), what it does *not* cover, and the provenance-tier key |
 | 1 | **Environment** (code) | Imports + printed versions. `sc.logging.print_versions()` / `sessionInfo()`. First cell, always |
 | 2 | **Config** (code) | Every accession, path, and threshold as a named constant. Nothing tunable appears anywhere below this cell |
-| 3 | **ETL** (code) | Fetch → verify → sample sheet. Idempotent. See `workflows/etl_geo.md` |
-| 4 | **QC + filtering** (code) | With the paper's reported counts as printed checkpoints |
+| 3 | **ETL** (code) | Fetch → verify → sample sheet → **print dimensions**. Idempotent. See `workflows/etl_geo.md` |
+| 4 | **QC + filtering** (code) | Live or commented, per the probe's `processing.state` — see below. Always carries the paper's reported counts as printed checkpoints |
 | 5 | **Analysis** (code) | The paper's actual pipeline, one cell per conceptual step |
 | 6 | **Figure reproduction** (code) | The target panel, captioned with what to compare against |
 | 7 | **Divergences** (markdown) | Where this is known to depart from the paper, and why |
@@ -41,6 +41,55 @@ MAX_MITO    = 10.0          # INFERRED - paper says "high mito removed", no valu
 N_HVG       = 2000          # stated (Methods, "Normalization")
 RESOLUTION  = 0.8           # repo (analysis/cluster.R:L44)
 SEED        = 0             # INFERRED - paper reports no seed; results will drift
+
+# Checkpoints and deposit state -- what the dimension check compares against
+PAPER_N_CELLS = 12483       # stated (Results, "12,483 cells passed QC")
+DEPOSIT_STATE = "processed" # INFERRED from probe.json processing.state;
+                            # section 4 QC is COMMENTED because of this
+```
+
+`PAPER_N_CELLS` and `DEPOSIT_STATE` are not optional. The first is what makes
+divergence measurable; the second is what tells a reader, at the top of the
+notebook, why a documented QC step is inert further down.
+
+## Section 4 is conditional: live QC or commented QC
+
+Whether the QC cells run depends on the state the data was deposited in, not on
+what the paper's Methods section says. Read `processing.state` from
+`data/<GSE>/probe.json` and follow `workflows/etl_geo.md` Step 2b.
+
+| `processing.state` | Section 4 ships |
+| --- | --- |
+| `raw` | **Live cells.** The default, and the case the rest of this file assumes |
+| `processed` | **Commented cells**, with the paper's thresholds preserved inside them |
+| `mixed` | Live or commented per the file you actually loaded — state the choice in the section's markdown cell |
+| `unknown` | **Live cells**, and the section's markdown cell tells the reader to check the printed dimensions first |
+
+Three rules that hold in every state:
+
+- **Never delete a QC step the paper documents.** Commented is not the same as
+  absent. A deleted step tells the reader the paper omitted something it did
+  not, and it throws away thresholds that took a Methods read to recover.
+- **A commented cell is still tiered and still sourced.** `min_genes = 200` from
+  the Methods stays `stated (Methods, "Quality control")` even inside a comment.
+- **Say why, where the reader is.** The comment block names the evidence file and
+  the condition for uncommenting. "Commented out" with no reason reads as an
+  unfinished notebook.
+
+The four-part comment header and a worked example are in `workflows/etl_geo.md`
+Step 2b — follow that format rather than inventing one, so every notebook in
+`output/` marks inert steps the same way.
+
+### Section 3 always ends with the dimension check
+
+This is what makes a wrong processing-state call visible immediately, so it
+ships in every notebook regardless of state:
+
+```python
+print(f"loaded: {adata.n_obs:,} cells x {adata.n_vars:,} genes")
+print(f"paper reports {PAPER_N_CELLS:,} cells after QC")
+# far above  -> raw droplets: uncomment section 4
+# at or near -> already filtered: leave section 4 commented
 ```
 
 ## Markdown cells
@@ -79,6 +128,12 @@ Never assert the match — print both and let the researcher see. A hardcoded
   says the field is unknown.
 - **No silent overwrites.** ETL checks before fetching; nothing outside
   `data/<ACCESSION>/` is written.
+- **No QC step applied to data that already had it.** Check `processing.state`
+  before writing section 4. Double-filtering produces a cell count below the
+  paper's, from two individually correct steps, with nothing in the notebook
+  showing the cause — the hardest class of reproduction bug to find.
+- **No documented step silently deleted.** If a step does not run, it ships
+  commented with its thresholds and the reason, never removed.
 - **Long steps flagged, not hidden.** A cell that takes 40 minutes or 60 GB of
   RAM says so in its markdown cell, above the code.
 - **Cluster numbering is arbitrary.** Never claim "cluster 3 is the paper's

@@ -8,7 +8,7 @@ description: Research a topic end-to-end and produce a structured, cited report 
 Read `workflows/research-report.md` and follow it. That file is the single
 source of truth — do not work from memory or paraphrase its phases.
 
-## The three things that matter most
+## The things that matter most
 
 **1. Intake is not optional.** Phase 0 runs even when the topic looks
 self-explanatory. One batched round of 3–4 questions via `AskUserQuestion`,
@@ -20,9 +20,21 @@ because the user has to translate it into their real situation anyway. Spend
 30 seconds identifying the topic's actual dividing lines — competing
 approaches, sub-fields, scope boundaries — and offer those instead.
 
-**3. The report ends in a decision.** Question 3 of intake asks what decision
-the research informs. The Recommendations section answers that question
+**3. The report ends in a decision.** Intake slot Q asks what decision the
+research informs. The Recommendations section answers that question
 specifically; a report that merely informs has missed the point.
+
+**4. You start with no prior.** Don't read local files, past reports in
+`output/`, or the `CLAUDE.md` profile to shape the search. Slot P asks the user
+whether anything local is in scope; the default is literature only, and silence
+is not consent. A prior that reweights the search without the user seeing it is
+the failure this slot exists to prevent.
+
+**5. Resolve analytical priors at intake, not in the report.** When the topic
+references the user's own analysis output — marker lists, DE genes, "annotate
+these clusters" — slot S asks organism, tissue, genotype and stage in the same
+round. A report that concludes "the annotation depends on the tissue" spent its
+whole search budget on an unanswerable question.
 
 ## Sources
 
