@@ -17,8 +17,13 @@ field: its data half targets GEO accessions, so it works best on papers with
 public sequencing data. Its protocol and gap audit work for any paper. Examples
 throughout use biology.
 
-Start Claude Code **inside an agent's directory**. That is what loads its
-`CLAUDE.md`, workflows, and slash command; running from the repo root will not.
+Run each agent from **inside its own directory** — that is what loads its
+`CLAUDE.md`, workflows, and command.
+
+**Not sure which one you need?** Start Claude Code at the repo root and run
+`/alchemist <what you're trying to do>`. It picks the agent and gives you the
+command. It routes only — it does not run the agents. See
+[Choosing an agent](#choosing-an-agent).
 
 ---
 
@@ -38,6 +43,39 @@ python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 
 `forage` needs Globus credentials as well, but only for real collection access.
 Its demo runs without them.
+
+---
+
+## Choosing an agent
+
+Which agent you want comes down to what the request is anchored on:
+
+| Anchor | Agent |
+| --- | --- |
+| A specific paper — DOI, URL, PMID, or PDF | `brew` |
+| The lab's own existing data | `forage` |
+| A subject, with no specific paper or dataset in view | `distill` |
+
+Or let it decide for you, from the repo root:
+
+```bash
+claude
+```
+
+```
+/alchemist do we already have organoid data, and what does the literature say?
+```
+
+It returns the agent, the `cd`, the command, and what that agent will ask first.
+It does not run anything — the agents' interactive intake rounds are where their
+output quality comes from, and each agent's rules load from its own directory.
+
+**Handoffs between agents are manual.** For a request spanning two agents, the
+router gives you an ordered sequence and names what you decide between steps.
+That is deliberate: `forage` labels what it inferred rather than observed, and
+`brew` tiers every protocol step by source. Feeding one agent's inference into
+another as established input would erase that distinction, which is the failure
+mode the whole framework is built to prevent.
 
 ---
 
