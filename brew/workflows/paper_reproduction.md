@@ -87,6 +87,37 @@ options waste the round. Spend one pass on:
 
 Don't extract details yet. This pass exists to make the questions specific.
 
+### Before 0b — the bias-reporting question (separate, and additional)
+
+Asked once per session, before the intake round.
+
+**It does not use an intake slot.** Separate `AskUserQuestion` call, one
+question; the intake round that follows still gets its full 3–4. Never drop or
+merge an intake slot to make room — question 2 alone (which figure) decides
+whether the deliverable is useful at all, and a session preference must not be
+paid for out of that budget.
+
+```bash
+python3 ../bias/report.py status --session <session-id>
+```
+
+- **`asked already : yes`** — don't ask again; use the reported state.
+- **`asked already : NO`** — ask:
+
+> Enable bias reporting for this session?
+> - **No** — the default. Reports carry no influence section
+> - **Yes** — each report gains a *Context & Influence* section listing what shaped it besides your request, and runs accumulate in `bias/log.jsonl` for a cross-run view
+
+Record the answer yourself — **never ask the user to run a command**:
+
+```bash
+python3 ../bias/report.py set --enabled true|false --session <session-id>
+```
+
+No session id available? Use "have I already asked in this conversation?" as the
+test. An answer the user already gave in conversation stands — record it and
+skip the question.
+
 ### 0b. One batched intake round
 
 Ask **3–4 questions in a single `AskUserQuestion` call**, then start working.
@@ -302,6 +333,14 @@ essentials:
 - **Every step's markdown cell names its tier and source**, same as the report.
   An `[inferred]` parameter is called out where the researcher will change it.
 - **ETL first, and idempotent** — re-running must not re-download.
+- **Branch the QC section on the deposit's processing state.** `geo_probe.py`
+  reports `processing.state`; when the deposited matrices were already
+  cell-called and filtered, the QC cells ship **commented** — thresholds
+  preserved, reason and uncomment-condition stated — rather than live. Running
+  them over a pre-filtered matrix double-filters it and undercounts cells for a
+  reason nothing in the notebook reveals. `workflows/etl_geo.md` Step 2b has the
+  branch table and the comment format; the call is `[inferred]`, since the probe
+  reads filenames and never opens a file.
 - Paper-reported checkpoints inline: "the paper reports 12,483 cells after
   filtering; this cell prints the count you got."
 - **Never write code you have not reasoned through against the actual data
@@ -352,11 +391,31 @@ Rules for this section:
 - [ ] Every repo file and accession cited actually fetched and verified?
 - [ ] Notebook runs top to bottom in principle — no out-of-order state, no
       guessed column names, config at the top?
+- [ ] `processing.state` read from the probe, and the QC section live or
+      commented to match — with the state, its evidence, and its `[inferred]`
+      marker stated in the report's Data section, not just in the notebook?
+- [ ] Every commented QC block carries the paper's thresholds, the reason, the
+      uncomment condition, and its effect — and no documented step deleted?
+- [ ] ETL prints loaded dimensions against the paper's count *before* the QC
+      section, so a wrong state call shows up in one line?
 - [ ] Environment section carries real versions, not "latest"?
 - [ ] Gap section specific, ranked by blocking, and honest about what is fatal?
 - [ ] Paper-reported checkpoint numbers included so the user can compare?
 - [ ] Both `.md` and `.pdf` in `output/`, PDF regenerated after the last edit?
 - [ ] Data files: none downloaded, nothing written outside `output/` and `data/`?
+
+### Bias reporting (if it was enabled in Phase 0)
+
+Only when the Phase 0 question turned it on. Append a **Context & Influence**
+section to the protocol report and log the run with
+`python3 ../bias/report.py append --file <scratchpad>/bias_run.json`. Format and
+record shape are in `../bias/README.md`.
+
+What this workflow contributes: anything `resources/method_gaps.md` supplied
+about a lab's habitual omissions (an accumulating prior by design — legitimate,
+but it can turn "this lab usually omits X" into "this paper omits X"), and any
+point where the `CLAUDE.md` profile answered something intake did not. "(none)"
+is the expected answer for a clean run.
 
 **Report back short** — do not paste the report into the terminal:
 

@@ -11,7 +11,7 @@ of truth — do not work from memory or paraphrase its steps.
 Then read `.claude/commands/forage.md` for the standing collection context
 (collection UUID, credentials, venv, and the CSV-coverage lesson).
 
-## The three things that matter most
+## The things that matter most
 
 1. **Read-only on Globus, always.** Never transfer, rename, delete, or create.
    Never propose granting the client `rw`, even temporarily.
@@ -23,6 +23,12 @@ Then read `.claude/commands/forage.md` for the standing collection context
 3. **Never launder a guess into a fact.** Every claim carries a tier: `csv`
    (matched a request record), `inferred` (read off a path), or `unknown` (too
    vague — recorded, never reported as understood). Mark inferred entries plainly.
+4. **Scope the scan before running it.** Check the existing inventory's
+   `scan_meta` header first; most questions need no new scan at all. If one is
+   needed, survey at `--depth 2`, show the researcher the real top-level
+   directories with their real cost, and scan only what they choose. `--path`
+   is repeatable. A full walk is ~3 hours and is almost never what the question
+   requires.
 
 ## Deliverable
 

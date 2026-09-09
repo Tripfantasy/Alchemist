@@ -84,6 +84,14 @@ brew/data/*
 !brew/data/.gitkeep
 
 
+# --- bias reporting ----------------------------------------------------------
+# Opt-in per-run influence log. It records what a run was actually about --
+# queries, intake answers, and the profile facts that shaped them -- so it is
+# local monitoring state, not a deliverable. config.json IS tracked: it ships
+# disabled, and that default is part of the agent.
+bias/log.jsonl
+
+
 # --- Python ------------------------------------------------------------------
 .venv/
 venv/

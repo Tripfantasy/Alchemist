@@ -32,8 +32,11 @@ Read the JSON before writing any loader. Three things to check first:
 2. **Sample count matches the paper.** A paper describing 8 samples against a
    6-sample series means samples live in a second accession, a SuperSeries, or
    were never deposited. Resolve this now, not after writing the loader.
-3. **Whether processed files exist.** This decides the entire shape of the
-   reproduction (Step 2).
+3. **Whether processed files exist**, and **what state they are in.** These are
+   two different questions. `format.tier` answers the first; `processing.state`
+   answers the second (Step 2b). Together they decide the entire shape of the
+   reproduction — the tier decides which file you load, the state decides
+   whether the QC steps run at all.
 
 For a SuperSeries, probe the sub-series too — the files live there, not on the
 parent.
@@ -69,6 +72,119 @@ already published. Say so before doing it.
 their `.h5ad` and re-plotting their UMAP is a figure check, not a reproduction —
 if the goal is to verify their pipeline, start from Tier 2/3 counts and rebuild.
 Say which one you did.
+
+---
+
+## Step 2b — Is the data already processed?
+
+Tier says what *format* the files are. This step says what *state* they are in —
+whether cell-calling and QC filtering already ran before deposition. The two are
+independent, and getting this wrong breaks a reproduction quietly.
+
+**The failure it prevents.** The paper's QC section says `min_genes=200,
+max_mito=10`. You write those thresholds into the notebook, faithfully. But the
+deposited matrix was already filtered by the authors on the same criteria, so
+the notebook filters an already-filtered matrix — and reports 9,900 cells where
+the paper says 12,483. The numbers disagree, both steps are individually
+correct, and nothing in the notebook shows why. A researcher then spends a day
+hunting a bug in the reproduction that is actually a double-filter.
+
+`geo_probe.py` resolves this. Read `processing.state` from the probe JSON:
+
+| `state` | Means | What the notebook does with QC |
+| --- | --- | --- |
+| `raw` | Raw droplets, pre-cell-calling | **Live cells.** QC is genuinely part of this reproduction |
+| `processed` | Cell-called and/or QC-filtered upstream | **Commented cells** — see below |
+| `mixed` | Both deposited | You choose, and say why. Raw to verify their pipeline; processed to build on their result |
+| `unknown` | No signal either way | **Live cells, plus the dimension check below** |
+
+`processing.evidence` names the files behind the call, and `processing.guidance`
+carries the per-state instruction. Quote the evidence in the report — a caveat
+you cannot trace to a filename becomes vague hedging.
+
+### This is `[inferred]`, never `stated`
+
+The probe reads filenames and the series text. Neither is proof: the only proof
+is the file header, and reading it means downloading, which this project does not
+do. So a processing-state call is an **[inferred]** tier step, and it says what
+it was inferred from:
+
+> **[inferred — deposit appears pre-filtered; `GSM8145_filtered_feature_bc_matrix.h5`
+> carries CellRanger's `filtered` prefix. The paper's QC thresholds are recorded
+> in the commented cell below. Uncomment if your matrix dimensions indicate raw
+> droplets.]**
+
+Never write "the data is already filtered" flat. The probe did not open the file.
+
+### The commented-QC convention (`state: processed`)
+
+QC steps ship **present but inert** — never deleted, never live. Deleting them
+loses the paper's thresholds and makes the notebook look like it skipped a step
+the paper documented; running them double-filters.
+
+Each commented block carries four things, in this order:
+
+1. **Why it is commented** — one line, naming the evidence file
+2. **The paper's actual thresholds**, preserved verbatim with their tier
+3. **When to uncomment** — the concrete condition, not "if needed"
+4. **What changes if you do** — so the researcher can predict the effect
+
+```python
+# ---------------------------------------------------------------------
+# QC filtering -- COMMENTED BY DEFAULT
+#
+# Why: GSM8145_filtered_feature_bc_matrix.h5 is CellRanger `filtered`
+#      output, so cell-calling and the authors' QC already ran. Applying
+#      these thresholds again double-filters and undercounts cells.
+#      [inferred from the filename -- the probe did not open the file]
+#
+# The paper's thresholds, preserved:
+#   min_genes = 200      # stated (Methods, "Quality control")
+#   max_mito  = 10.0     # stated (Methods, "Quality control")
+#
+# Uncomment IF: the dimension check above prints a cell count far ABOVE
+#      the paper's 12,483 -- that means you loaded raw droplets, not the
+#      filtered matrix, and these thresholds are needed after all.
+# Effect: drops ~N barcodes; expect the count to land near the paper's.
+# ---------------------------------------------------------------------
+# sc.pp.filter_cells(adata, min_genes=200)
+# adata = adata[adata.obs.pct_counts_mt < 10.0].copy()
+```
+
+For `.Rmd`, use a named chunk with `eval=FALSE` and the same four-part header —
+the chunk stays visible and knits, it just does not run.
+
+### The dimension check (every state, including `processed`)
+
+Whatever the state, the ETL prints dimensions *before* any QC cell and compares
+against the paper. This is what makes a wrong inference visible in one line
+instead of a day:
+
+```python
+print(f"loaded: {adata.n_obs:,} cells x {adata.n_vars:,} genes")
+print(f"paper reports {12483:,} after QC")
+print("-> well above the paper's count: raw droplets, QC cells needed (uncomment)")
+print("-> at or near the paper's count: already filtered, leave QC commented")
+```
+
+For `state: unknown` this check is not optional — it is the entire mechanism by
+which the state gets resolved, and its markdown cell says so.
+
+### Modality changes what "QC" even means
+
+The commented block is not always about `min_genes` / `max_mito`. Branch on the
+assay before writing it — the probe's `format.flags` name the modality:
+
+| Modality | The QC that may already have run |
+| --- | --- |
+| scRNA / snRNA | Cell-calling, min genes/counts, mito %, doublet removal |
+| ATAC / Multiome | Peak calling, TSS enrichment, nucleosome signal, FRiP |
+| CITE-seq / hashing | Demultiplexing, negative/doublet classification by HTO |
+| Spatial | Under-tissue spot filtering — a spot matrix may be tissue-restricted already |
+| Bulk RNA-seq | Low-count gene filtering, and **whether the values are normalized at all** (Step 4) |
+
+A deposit that is filtered for RNA may be entirely unfiltered for its ATAC half.
+State per modality, not per series.
 
 ---
 
@@ -197,6 +313,12 @@ Each of these has silently broken a real reanalysis:
 Into the report's Data section:
 
 - Accession(s), tier taken, **total download size**, and rough download time
+- **Processing state, the evidence for it, and which QC steps ship commented as
+  a result.** Say it plainly: "the deposit appears pre-filtered (`…filtered_feature_bc_matrix.h5`),
+  so the paper's QC thresholds are preserved as commented cells rather than run.
+  This is inferred from filenames — confirm against the loaded dimensions."
+  A reader must never have to open the notebook to discover a documented step
+  is inert.
 - Sample sheet summary: n per group as deposited, vs n per group as the paper
   describes
 - Files that exist but were **not** used, and why (raw matrices, unrelated assays)

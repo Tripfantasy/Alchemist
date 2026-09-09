@@ -48,6 +48,37 @@ The short version:
 - Repo-wide maintenance: `.gitignore`, the root `README.md`, git operations.
 - Edit an agent's own files when asked to change that agent - that is
   maintenance, not running the workflow.
+- Turn bias reporting on or off, and read its cross-run summary (`bias/`).
+
+# `bias/` - the one thing shared across agents
+
+Opt-in, off by default. Records what influenced a run OTHER than the request
+and that run's clarifying answers: the "About Me" profile, prior outputs, the
+knowledge store, the vocabulary, earlier turns.
+
+It lives at root rather than three times over because its whole value is the
+CROSS-AGENT, cross-run view. A single disclosure looks harmless; the pattern is
+the finding - a profile fact that silently answers a question in nine runs out
+of ten is a standing premise, not context. That view cannot exist inside any one
+agent, which is the one deliberate exception to their self-containment.
+
+**Each agent ASKS, once per session, before it starts work** - the user never
+runs a command to enable it, and the question is separate from and additional to
+that agent's intake round, never taking one of its clarifying slots. The agent
+records the answer to `bias/config.json` itself. Enforced identically in all
+three workflows; if you change one, change all three.
+
+Routing note: `/alchemist` cannot intercept a direct `/distill` run - the root
+command is not loaded when an agent is invoked directly. That is why the ask
+lives in each agent's own intake rather than here. When routing, it is worth
+mentioning that the agent will ask.
+
+```bash
+python3 bias/report.py summarize [--agent distill] [--last 20]
+```
+
+`bias/README.md` has the definition, the record shape, and the honest limits -
+it is self-reported, so it is evidence for monitoring, not proof of neutrality.
 
 # Handoffs between agents are manual, by design
 

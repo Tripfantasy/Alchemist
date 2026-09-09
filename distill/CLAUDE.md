@@ -11,6 +11,12 @@ I am a bioinformatician working in a neuroscience department. I have a vested in
 - Keep reports and summaries concise. Bullet points over paragraphs.
 - Save all output files to the output folder.
 - Cite sources when doing research. Never cite a source you have not retrieved.
+- NO UNPROMPTED LOCAL PRIORS. A run reads nothing outside this project's
+  `resources/` unless the user names a path in the Phase 0 intake round. That
+  means no filesystem `Glob`/`Grep` for context, no reading past reports in
+  `output/`, and no treating the "About Me" above as an answer to a question
+  intake should ask. The profile says who is asking, not what was asked.
+  Whatever a run did read is disclosed in the report's Scope section.
 - Every report ships as BOTH .md and .pdf. Write the .md, then run
   `./.venv/bin/python resources/md-to-pdf.py output/<name>.md`. The .md is the
   source of truth; the .pdf is derived - never hand-edit it, regenerate it.

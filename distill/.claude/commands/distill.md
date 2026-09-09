@@ -25,6 +25,13 @@ If that is empty, ask for a topic before doing anything else.
    call, then start working. No second round.
 3. Every option must name a real dividing line in *this* topic. Generic
    "broad vs. narrow" options waste the round.
+4. **Slot P is mandatory**: ask whether the search may reference a local file
+   or directory, or literature only. Default is literature only — read nothing
+   outside `resources/` unless the user names a path in this round.
+5. **Slot S fires when the topic references the user's own analysis output**
+   (marker lists, DE genes, "annotate these clusters"). Ask for organism,
+   tissue, genotype and stage *now*. Reporting the annotation as "ambiguous
+   without knowing the tissue" after the search is the failure this prevents.
 
 ## Standing context
 

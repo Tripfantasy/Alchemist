@@ -204,6 +204,43 @@ produced by running the real pipeline against the mock collection.
 
 ---
 
+## Bias reporting (opt-in, off by default)
+
+Every agent starts each run from your request and the answers to its clarifying
+questions. It also sits next to a standing picture of you — the "About Me"
+profile, past reports, `forage`'s query log and vocabulary, earlier turns in the
+session. Bias reporting exists to make it visible when the second one answered a
+question the first one should have.
+
+**You never turn it on by hand.** Each agent asks once per session, before it
+starts work:
+
+> Enable bias reporting for this session?
+> — **No** (default) · **Yes**
+
+That question is separate from and additional to the agent's intake round — it
+never costs you one of the 3–4 clarifying questions that actually shape the
+work. Answer once and every agent in that session honors it; a new session asks
+again.
+
+While enabled, each report gains a **Context & Influence** section — what was
+asked and answered, what influenced the run beyond that, and what got filled in
+without being asked — and each run appends to `bias/log.jsonl` (gitignored).
+
+The per-run section is the small half. The accumulating log is the point:
+
+```bash
+python3 bias/report.py summarize
+```
+
+One disclosure looks harmless. A source appearing in most runs gets flagged as a
+standing premise rather than context, and a fact that repeatedly gets supplied
+without being asked is precisely a missing intake question. It is self-reported,
+so treat it as monitoring evidence, not proof of neutrality —
+[bias/README.md](bias/README.md) is explicit about that.
+
+---
+
 ## Connectors
 
 Anthropic-hosted MCP connectors. Authorize them in your claude.ai connector
