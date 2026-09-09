@@ -83,6 +83,14 @@ forage/knowledge/*
 brew/data/*
 !brew/data/.gitkeep
 
+# Archives OF that directory. `brew/data/*` does not match a sibling zip, so a
+# Finder "Compress" on data/ lands a tracked brew/data.zip holding exactly the
+# payloads the rule above exists to exclude -- and inside an archive nobody
+# reviews it, plus __MACOSX/ and .DS_Store noise.
+brew/data.zip
+brew/data*.zip
+brew/data*.tar.gz
+
 
 # --- bias reporting ----------------------------------------------------------
 # Opt-in per-run influence log. It records what a run was actually about --
