@@ -95,9 +95,16 @@ brew/data*.tar.gz
 # --- bias reporting ----------------------------------------------------------
 # Opt-in per-run influence log. It records what a run was actually about --
 # queries, intake answers, and the profile facts that shaped them -- so it is
-# local monitoring state, not a deliverable. config.json IS tracked: it ships
-# disabled, and that default is part of the agent.
+# local monitoring state, not a deliverable.
 bias/log.jsonl
+
+# config.json IS tracked: it ships `enabled: false`, and that default is part
+# of the agent. Every runtime answer goes here instead -- the enabled flag, the
+# timestamp, and the session UUID the agent uses to decide whether it has
+# already asked. Keeping those out of the tracked file is what stops one
+# person's session from arriving in everyone else's clone, and stops the bias
+# question from dirtying git status on every run.
+bias/config.local.json
 
 
 # --- Python ------------------------------------------------------------------

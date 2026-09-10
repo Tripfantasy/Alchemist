@@ -24,7 +24,14 @@ from pathlib import Path
 from typing import Dict, List
 
 HERE = Path(__file__).resolve().parent
+
+# Two files, on purpose. config.json is TRACKED and ships `enabled: false` --
+# that default is part of the agent, so a fresh clone starts opted out. Every
+# runtime answer goes to config.local.json, which is GITIGNORED, so answering
+# the bias question never dirties a tracked file and a clone is never tainted
+# by someone else's session. Local wins where both set a key.
 CONFIG = HERE / "config.json"
+CONFIG_LOCAL = HERE / "config.local.json"
 LOG = HERE / "log.jsonl"
 
 AGENTS = ("distill", "brew", "forage")
@@ -48,20 +55,47 @@ KNOWN_SOURCES = {
 # config
 # --------------------------------------------------------------------------
 
-def load_config() -> Dict:
-    if not CONFIG.exists():
-        return {"enabled": False}
+def _read_json(path: Path) -> Dict:
+    if not path.exists():
+        return {}
     try:
-        return json.loads(CONFIG.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as err:
         # Never let a malformed config silently read as "enabled".
-        print("bias: config.json is unreadable ({}) -- treating as DISABLED"
-              .format(err), file=sys.stderr)
-        return {"enabled": False}
+        print("bias: {} is unreadable ({}) -- ignoring it, which means "
+              "DISABLED unless the other file says otherwise"
+              .format(path.name, err), file=sys.stderr)
+        return {}
+    if not isinstance(data, dict):
+        print("bias: {} is not an object -- ignoring it"
+              .format(path.name), file=sys.stderr)
+        return {}
+    return data
+
+
+def load_config() -> Dict:
+    """Tracked defaults, overlaid with local state. Absent both, opted out."""
+    cfg = {"enabled": False}
+    cfg.update(_read_json(CONFIG))
+    cfg.update(_read_json(CONFIG_LOCAL))
+    return cfg
 
 
 def save_config(cfg: Dict) -> None:
-    CONFIG.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    """Write ONLY the local override. config.json is tracked and must keep
+    shipping `enabled: false`; a runtime answer that edited it would put one
+    person's session into everyone else's clone."""
+    shipped = _read_json(CONFIG)
+    local = {k: v for k, v in cfg.items()
+             # _comment is documentation and lives in the tracked file; keys
+             # that merely echo the shipped value need not be restated.
+             if k != "_comment" and shipped.get(k) != v}
+    local["_comment"] = ("Local bias-reporting state, gitignored. The tracked "
+                         "default lives in config.json; this file overrides "
+                         "it for this machine only. Safe to delete -- doing so "
+                         "reverts to the shipped default.")
+    CONFIG_LOCAL.write_text(json.dumps(local, indent=2) + "\n",
+                            encoding="utf-8")
 
 
 def is_enabled() -> bool:
@@ -92,6 +126,31 @@ def validate(rec: Dict) -> List[str]:
         if src and src not in KNOWN_SOURCES:
             print("bias: note -- unrecognised source {!r}, recorded anyway"
                   .format(src), file=sys.stderr)
+
+    # unasked_fills went unvalidated until 2026-09-10, and a run keyed its
+    # entries on "what" instead of "fact". It appended cleanly, reported
+    # "2 unasked fill(s)", and summarized as "2x None" -- the content was in
+    # the log but the highest-signal line of the cross-run view was blank.
+    # summarize reads `fact` and nothing else, so `fact` is the hard error.
+    for i, fill in enumerate(rec.get("unasked_fills") or []):
+        if not isinstance(fill, dict):
+            problems.append("unasked_fills[{}] must be an object with a "
+                            "'fact' key, got {}"
+                            .format(i, type(fill).__name__))
+            continue
+        if not fill.get("fact"):
+            near = [k for k in ("what", "assumption", "item", "name", "supplied")
+                    if fill.get(k)]
+            problems.append(
+                "unasked_fills[{}].fact is required{} -- summarize counts "
+                "fills by 'fact' and renders anything else as None"
+                .format(i, " (rename {!r})".format(near[0]) if near else ""))
+        for field in ("basis", "effect"):
+            if not fill.get(field):
+                print("bias: note -- unasked_fills[{}] has no {!r}, recorded "
+                      "anyway (summarize does not read it, but a reader of "
+                      "the log will look for it)".format(i, field),
+                      file=sys.stderr)
     return problems
 
 

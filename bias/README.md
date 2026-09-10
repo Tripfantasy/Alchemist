@@ -146,10 +146,30 @@ Rules for it:
      "effect": "depth and terminology; no effect on findings",
      "disclosed": true}
   ],
-  "unasked_fills": [],
+  "unasked_fills": [
+    {"fact": "assumed the organism was mouse",
+     "basis": "the About Me block, not an intake answer",
+     "effect": "every search was mouse-restricted"}
+  ],
   "notes": ""
 }
 ```
 
 `run_id` and `ts` are added on append. `agent`, `query` and `influences` are
 required; an empty `influences` list is valid and meaningful.
+
+**`unasked_fills` entries must use the key `fact`.** `summarize` counts fills by
+that key and prints nothing else about them, so an entry keyed on anything else
+— `what`, `assumption`, `item` — logs its content but renders in the cross-run
+view as `None`. The content is not lost; the *signal* is, and this is the line
+the section above calls the highest-signal one.
+
+Two things make that easy to get wrong, so check the entry rather than trusting
+the exit code:
+
+- `append` validates `influences[].source`, `.supplied` and `.effect`, but
+  **does not validate `unasked_fills` at all.** A wrong key exits 0 and prints a
+  correct-looking count — the run that introduced this note logged
+  `2 unasked fill(s)` and summarized as `2x None`.
+- `fact` is the only key `summarize` reads. `basis` and `effect` are for a human
+  reading the log directly; write them, but do not expect them on screen.

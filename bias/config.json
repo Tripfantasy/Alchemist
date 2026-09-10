@@ -1,4 +1,4 @@
 {
   "enabled": false,
-  "_comment": "Opt-in bias reporting, off by default. You should not need to edit this or run any command: each agent asks once per session, before it starts work, and records your answer here itself. `session` is the session last asked; a new session gets asked again. When enabled, agents append a Context & Influence section to their reports and log each run to bias/log.jsonl. See bias/README.md."
+  "_comment": "Opt-in bias reporting, off by default. THIS FILE IS TRACKED and ships the default; do not put local state in it. Each agent asks once per session, before it starts work, and records your answer to bias/config.local.json (gitignored), which overrides this file on your machine only -- so you should not need to edit either or run any command. Delete config.local.json to revert to this default. When enabled, agents append a Context & Influence section to their reports and log each run to bias/log.jsonl. See bias/README.md."
 }
