@@ -10,25 +10,50 @@ This is the router level. Three self-contained agents live below it:
 
 # Your job at this level
 
-**Route, do not execute.** A session started here identifies which agent a
-request belongs to and hands back the exact command to run. It does not do the
-agents' work.
+**Route by default. Execute only through the delegation protocol.**
 
-That is a deliberate constraint, not a limitation to work around:
+A session started here works out which agent a request belongs to and hands back
+the command. That remains the default and the right answer for a vague or
+spanning request.
+
+But a person who already knows which agent they want should not have to open a
+different folder to use it. So `/forage`, `/brew` and `/distill` also exist at
+the root, as shims onto `.claude/lib/delegate.md`, which runs the agent **in
+place**.
+
+Nothing was relaxed to make that work. Running from the root broke three
+specific things, and delegation is permitted because each has a fix, not
+because the concerns stopped mattering:
 
 1. **Each agent's rules load from its own directory.** `distill/CLAUDE.md`,
    `brew/CLAUDE.md` and `forage/CLAUDE.md` carry the non-negotiables for their
    agent - provenance tiering, no-data-downloads, read-only Globus access. None
-   of them is loaded here. Working from the root means working without them.
+   of them is loaded here.
+   -> **Step 2** reads the agent's `CLAUDE.md` explicitly and makes it outrank
+   this file for the rest of the run.
 2. **Each agent's first phase is an interactive intake round** whose options are
    drawn from the specific topic or paper. That is where the output's quality
    comes from, and it cannot be delegated or skipped.
-3. **Each agent has its own venv and its own `output/`.** Work done from the root
-   would write to the wrong place with the wrong interpreter.
+   -> **Step 6.** This one was never mechanical. It is simply a rule, and
+   delegation does not touch it: the intake round and the bias question both
+   happen, in full.
+3. **Each agent has its own venv, its own `output/`, and its own
+   `.claude/settings.json`.** Work done from the root would write to the wrong
+   place with the wrong interpreter, and `forage` would have no credentials at
+   all.
+   -> **Steps 1, 3 and 5**: move into the agent directory, mirror its env to the
+   root with `.claude/lib/agent_env.py`, and keep every relative path anchored
+   to the agent.
 
-So: never read `brew/workflows/paper_reproduction.md` (or any agent's workflow,
-skill, or command file) in order to carry out that workflow yourself. Reading one
-to *explain* what an agent does is fine.
+So the old blanket ban is now narrower and sharper: **never read an agent's
+workflow, skill, or command file and carry it out ad hoc.** Either follow
+`.claude/lib/delegate.md` start to finish, or route and hand the command back.
+Half-delegating - reading the workflow but skipping the env check, the intake
+round, or the `cd` - is worse than either, because the output looks like a real
+run. Reading a workflow to *explain* what an agent does is still fine.
+
+A session started in the agent's own directory gets all of this natively. That
+is still the better way to work when opening the folder is practical.
 
 # Routing
 
@@ -44,11 +69,34 @@ The short version:
 # What is safe to do here
 
 - Route a request, and explain what the chosen agent will do and ask.
+- Run an agent in place via `/forage`, `/brew` or `/distill`, following
+  `.claude/lib/delegate.md` exactly.
 - Explain the repo: layout, setup, what each agent produces, its limitations.
 - Repo-wide maintenance: `.gitignore`, the root `README.md`, git operations.
 - Edit an agent's own files when asked to change that agent - that is
   maintenance, not running the workflow.
 - Turn bias reporting on or off, and read its cross-run summary (`bias/`).
+
+# Root environment
+
+`.claude/settings.json` at the root is **generated**, and gitignored. It mirrors
+the agents' env blocks so a delegated run has the credentials it needs, because
+Claude Code only reads settings from the directory the session started in.
+
+```bash
+python3 .claude/lib/agent_env.py sync           # after any agent's UUIDs change
+python3 .claude/lib/agent_env.py check forage   # is this session usable?
+```
+
+The agents' own `settings.json` files stay the source of truth; the root only
+copies. Neither subcommand ever prints a value - UUIDs are reported by name and
+status only, and must never reach a transcript or a report.
+
+Whether a `sync` takes effect in the session that ran it depends on the harness
+- some re-read `settings.json` per command, some only at startup. Do not assume;
+run `check` and believe it. If it still fails after a sync, the answer is
+"restart the session", not an inline `export`: shell state does not survive
+between Bash calls, so that will fail again later and less visibly.
 
 # `bias/` - the one thing shared across agents
 
@@ -73,6 +121,11 @@ command is not loaded when an agent is invoked directly. That is why the ask
 lives in each agent's own intake rather than here. When routing, it is worth
 mentioning that the agent will ask.
 
+This is also why delegation does not move the ask up to the root. A delegated
+`/forage` reaches the same Step 0 in the same workflow file, by the same route
+as a native run. One place asks, and it is the agent's - so a run started from
+the root and a run started in `forage/` behave identically.
+
 ```bash
 python3 bias/report.py summarize [--agent distill] [--last 20]
 ```
@@ -94,4 +147,10 @@ There is no automatic chain. The seams need a person:
   is the failure mode this whole framework is built to prevent.
 
 When a request spans agents, hand back an ordered sequence and say what the
-person needs to decide between steps. Do not run the steps.
+person needs to decide between steps.
+
+Delegation does not change this. `/forage` at the root runs forage and stops.
+It never rolls on into `brew` because the results looked promising, and it never
+carries one agent's output into another's input on the person's behalf - that is
+precisely the laundering the `inferred` tiers exist to prevent. Run one, hand
+back the next command, name the decision.

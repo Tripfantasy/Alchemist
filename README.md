@@ -56,19 +56,26 @@ Which agent you want comes down to what the request is anchored on:
 | The lab's own existing data | `forage` |
 | A subject, with no specific paper or dataset in view | `distill` |
 
-Or let it decide for you, from the repo root:
-
-```bash
-claude
-```
+Or let it decide for you. From a session at the repo root:
 
 ```
 /alchemist do we already have organoid data, and what does the literature say?
 ```
 
-It returns the agent, the `cd`, the command, and what that agent will ask first.
-It does not run anything — the agents' interactive intake rounds are where their
-output quality comes from, and each agent's rules load from its own directory.
+It returns the agent, the command, and what that agent will ask first.
+
+**You can also just run the agent from the root.** `/forage`, `/brew` and
+`/distill` all work there, delegating in place via
+[`.claude/lib/delegate.md`](.claude/lib/delegate.md) — which moves into the
+agent's directory, loads its `CLAUDE.md` as binding, mirrors its credentials in,
+and hands off to the agent's own command file. The intake round and the
+bias-reporting question happen exactly as they would natively; a delegated run
+and a native one are meant to be indistinguishable in everything but the
+transcript line saying which it was.
+
+A session started in the agent's own folder still gets all of that for free,
+with the agent's skills auto-triggering. Prefer it when opening the folder is
+practical.
 
 **Handoffs between agents are manual.** For a request spanning two agents, the
 router gives you an ordered sequence and names what you decide between steps.
@@ -81,13 +88,11 @@ mode the whole framework is built to prevent.
 
 ## distill — research reports
 
-```bash
-cd distill && claude
-```
-
 ```
 /distill <your topic>
 ```
+
+From the repo root or from a session opened in `distill/` — either works.
 
 Or describe a topic and the `research-report` skill triggers.
 
@@ -108,14 +113,12 @@ Example: [`EXAMPLE_research_report.md`](distill/output/EXAMPLE_research_report.m
 
 ## brew — paper reproduction
 
-```bash
-cd brew && claude
-```
-
 ```
 /brew https://doi.org/<your-doi>   what does Fig. 2 take to redo?
 /brew ~/Downloads/paper.pdf
 ```
+
+From the repo root or from a session opened in `brew/` — either works.
 
 The agent reads the paper, asks 3–4 questions naming that paper's figures, then
 writes a protocol and a notebook (`.ipynb` or `.Rmd`, matching the stack the
@@ -184,11 +187,23 @@ globus endpoint permission create <COLLECTION_UUID>:/ \
 ./.venv/bin/python scripts/verify_readonly.py <COLLECTION_UUID>
 ```
 
-Then `claude` in the directory:
+Then, in a session opened in `forage/`:
 
 ```
 /forage <what data are you looking for?>
 ```
+
+**To run `/forage` from the repo root instead**, mirror those UUIDs into the
+root's settings once — a session only reads settings from the directory it
+started in:
+
+```bash
+python3 .claude/lib/agent_env.py sync
+python3 .claude/lib/agent_env.py check forage    # restart the session if this fails
+```
+
+`forage/.claude/settings.json` stays the source of truth; the root only copies,
+so re-run `sync` after any change to it. Neither subcommand ever prints a UUID.
 
 **Read-only comes from the collection permission, not the code.** Globus
 Transfer has no read-only scope — it is `transfer.api.globus.org:all` or
@@ -277,6 +292,7 @@ source of truth — regenerate the PDF rather than editing it.
 | `forage/knowledge/` | Scan stores reach ~900 MB, over GitHub's 100 MB limit |
 | `brew/data/` | Downloaded public data, re-fetchable from the accession |
 | `forage/.claude/settings.json` | Your Globus client and collection UUIDs. Copy `settings.json.example`. |
+| `.claude/settings.json` (root) | Generated mirror of the above, for runs delegated from the root. `agent_env.py sync` writes it. |
 | `forage/resources/metadata.csv` | Real exports contain names and internal paths. `metadata_example.csv` ships instead. |
 | `forage/resources/project_codes.json` | Internal project codes. `project_codes.example.json` ships instead. |
 | venvs, `.env`, `*.secret`, `tokens.json` | — |

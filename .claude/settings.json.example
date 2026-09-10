@@ -1,0 +1,29 @@
+{
+  "_comment": [
+    "DO NOT FILL THIS IN BY HAND. Unlike the agents' settings.json files, the",
+    "root one is GENERATED -- it mirrors the agents' env blocks so that a run",
+    "delegated from the root (/forage, /brew, /distill) has the credentials it",
+    "needs. Claude Code only reads settings from the directory a session started",
+    "in, so the root cannot see forage/.claude/settings.json on its own.",
+    "",
+    "Generate it with:",
+    "  python3 .claude/lib/agent_env.py sync",
+    "",
+    "Set the real values in the AGENT's file -- forage/.claude/settings.json,",
+    "copied from its own settings.json.example -- then re-run sync. Editing the",
+    "root copy directly just gets overwritten, and drifts in the meantime.",
+    "",
+    "Whether a sync affects the session that ran it depends on the harness --",
+    "some re-read this file per command, some only at startup. Confirm with:",
+    "  python3 .claude/lib/agent_env.py check forage",
+    "and restart the session only if that still fails.",
+    "",
+    "No secrets here, ever. The Globus client secret lives in the macOS Keychain",
+    "under globus_agent_client_secret. These UUIDs are still private",
+    "infrastructure identifiers, which is why settings.json is gitignored."
+  ],
+  "env": {
+    "GLOBUS_AGENT_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "GLOBUS_AGENT_COLLECTION_ID": "00000000-0000-0000-0000-000000000000"
+  }
+}
