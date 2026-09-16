@@ -6,7 +6,7 @@ This is the router level. Three self-contained agents live below it:
 | --- | --- | --- |
 | `distill/` | `/distill <topic>` | Researching a topic from the literature |
 | `brew/` | `/brew <paper>` | Reproducing a specific paper's methods |
-| `forage/` | `/forage <goal>` | Finding data already on a Globus collection |
+| `forage/` | `/forage <goal>` | Finding data already on a Globus collection (`--quick` for a judged file list, no report) |
 
 # Your job at this level
 
@@ -37,6 +37,12 @@ because the concerns stopped mattering:
    -> **Step 6.** This one was never mechanical. It is simply a rule, and
    delegation does not touch it: the intake round and the bias question both
    happen, in full.
+   The one exception is written into an agent's own workflow, not taken by a
+   delegated run: `forage --quick` has a one-question round (its Step 1q),
+   because it cannot scan and writes no report, so a wrong guess costs a
+   five-second re-run instead of a three-hour scan. Delegation never shortens
+   intake. Only the agent's workflow can, and only where it says so — and the
+   bias question is not an intake question, so no mode skips it.
 3. **Each agent has its own venv, its own `output/`, and its own
    `.claude/settings.json`.** Work done from the root would write to the wrong
    place with the wrong interpreter, and `forage` would have no credentials at

@@ -34,3 +34,14 @@ Then read `.claude/commands/forage.md` for the standing collection context
 
 Both `.md` and `.pdf` in `output/`, then log the run to
 `knowledge/query_log.jsonl`. Use `./.venv/bin/python`, never bare `python3`.
+
+**Unless the request is for a quick match.** Someone who asks "do we have
+anything on X?" or "just give me the files" wants the workflow's `--quick`
+mode — a judged, tier-labelled list on screen, no report. The workflow's **Two
+modes** table is authoritative. Two things do not change in that mode: it still
+judges the candidates rather than handing back `search.py`'s raw ranking, and
+it still labels every path with its tier. It also never scans, so if the store
+does not cover the roots it stops and offers the full run instead.
+
+Offer it when the question sounds like a yes/no with paths attached, but do not
+choose it for someone who asked for a report.

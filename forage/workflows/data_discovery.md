@@ -21,6 +21,38 @@ Before the first scan against a new collection, run:
 
 ---
 
+## Two modes
+
+`--quick` anywhere in the arguments selects quick-match. Anything else is a full
+run.
+
+| | Full run | `--quick` |
+| --- | --- | --- |
+| Intake | 3–4 questions (Step 1) | at most one (Step 1q) |
+| Talks to Globus | yes, after Step 2a scoping | **never** |
+| Judging | yes (Step 6) | yes (Step 6q) — same cut, no prose |
+| Deliverable | `.md` + `.pdf` in `output/` | chat only |
+| Gaps | four failure modes (Step 7) | one scope line |
+| Run logged | yes (Step 8) | yes (Step 8) |
+
+Step order for `--quick`: 0 → 1q → 2 → 5 → 6q → 8. Step 4 is reachable when an
+inventory exists but was never indexed; Steps 2a, 3 and 7 are not reachable at
+all, and Step 9 still applies if the researcher corrects something.
+
+Quick-match exists because most questions are "is there anything on X at all?",
+and a three-page report is the wrong answer to that one. It is the same search
+and the same judgment, written to the screen instead of to `output/`.
+
+**The boundary that makes it quick: quick-match never touches the network.**
+Local work is fair game — reading the store, indexing an existing inventory,
+searching. An endpoint walk is not, at any depth. It follows that quick-match
+needs no credentials and no `verify_readonly.py` run, because nothing it does
+could reach the collection to write to it.
+
+**What it never does is lower the standard of a claim.** Every path still
+carries its tier, `unknown`-tier files are still never cited, and it still says
+what scope it searched. A shorter answer is allowed. A less honest one is not.
+
 ## Step 0 — The bias-reporting question (separate, and additional)
 
 Asked once per session, before intake.
@@ -51,9 +83,12 @@ No session id available? Use "have I already asked in this conversation?" as the
 test. An answer the user already gave in conversation stands — record it and
 skip the question.
 
-## Step 1 — Intake
+## Step 1 — Intake (full runs)
 
 Ask these before doing anything else. Do not proceed on assumptions.
+
+`--quick` runs use Step 1q instead. That is the only exemption, and Step 1q
+explains what earns it.
 
 **Always ask:**
 
@@ -83,6 +118,32 @@ plausibly satisfy this request? Then it is too vague. Typical gaps:
 
 Ask at most 3–4 of these at once. Prefer the ones that would change which files
 get returned.
+
+## Step 1q — Intake, `--quick` only
+
+One question, at most.
+
+Step 1's full round exists because a wrong guess there buys a three-hour scan
+and a report built on the wrong premise. Quick-match cannot scan and writes no
+report, so a wrong guess costs one re-run of a five-second search. That is what
+earns the shorter round, and it is the whole of what was relaxed.
+
+- **Ask nothing** when the goal already names an organism or model, a tissue or
+  region, and a modality. State which reading you took, in one line, so a wrong
+  one is visible and cheap to correct.
+- **Ask one question** otherwise, and make it file types — the
+  `type_groups` question from Step 1. It is the one that most changes which
+  files come back: raw `.fastq.gz` and a processed `.h5ad` answer completely
+  different questions.
+- **Never ask folder scope.** It exists to scope a scan, and quick-match cannot
+  scan.
+
+If the goal is vague enough that two unrelated datasets would both satisfy it,
+do not paper over that with a one-question round. Say so, and recommend the full
+`/forage <goal>` — it has the intake round to settle it.
+
+Step 0 still happens in full. The bias question is not an intake question and
+never was, so quick-match does not get to skip it by having a shorter round.
 
 ## Step 2 — Check what you already have, before proposing any scan
 
@@ -120,6 +181,22 @@ Then decide, in this order:
 | Covers a *sibling* tree, not the requested one | Scan **only the missing roots** and merge — not the whole collection again |
 | Was scanned with `--types` narrowing the walk | Treat as incomplete for any other type. This is why Step 3 scans without `--types` |
 | Missing, or the requested root was never walked | Go to Step 2a |
+
+### In `--quick` mode this is the whole scoping decision
+
+There is no Step 2a to fall through to, so the bottom rows resolve differently.
+Note that what quick-match actually needs is the **association store** —
+`search.py` reads that, not the inventory, and exits if it is empty:
+
+| Existing coverage | `--quick` does this |
+| --- | --- |
+| Store covers the requested roots | go to Step 5 |
+| An inventory covers them but was never indexed | run Step 4 first, then Step 5. It is a local pass over JSONL — minutes, not hours. Say that you are doing it and why |
+| Covers a sibling tree only, or nothing at all | **stop.** Name the roots that *are* covered, and hand back `/forage <goal>` for a scoped scan |
+
+That last row is what keeps the mode meaningful. A mode that can silently cost
+three hours is not a quick mode, and one that answers from a tree it never
+searched is worse than a slow one.
 
 ## Step 2a — Survey before you scan
 
@@ -219,7 +296,16 @@ Writes associations to `knowledge/file_associations.jsonl`, refreshes
 This is a **recall device, not a judge**. It casts wide on token overlap. Your
 job in the next step is to cut.
 
-## Step 6 — Judge, then write the report
+Both modes run this step identically, and both then cut — Step 6 for a full run,
+Step 6q for `--quick`. Neither mode ever hands this JSON back as the answer. On
+a `--quick` run, drop `--folder` unless the researcher named a path, since the
+one intake question was about types; the store's coverage is the scope, and the
+scope line in Step 6q is where you say so.
+
+## Step 6 — Judge, then write the report (full runs)
+
+`--quick` uses Step 6q, which applies the four rules below unchanged and writes
+to the screen instead of `output/`. The judging is not what the mode skips.
 
 Read `knowledge/candidates.json` and apply real judgment. The score is lexical;
 it does not know biology.
@@ -256,6 +342,61 @@ Two authoring conventions the renderer depends on:
 - **A paragraph opening with ⚠️** renders as an amber caveat box. Use it for
   "this is inferred", "raw data only", and similar warnings a reader must not
   skim past.
+
+## Step 6q — Judge, then answer on screen (`--quick` only)
+
+The same judgment as Step 6. The only thing that changes is where it goes.
+
+Read `knowledge/candidates.json` and cut it, for the reason Step 5 gives:
+`search.py` scores lexical overlap and knows no biology, so what it returns is a
+recall list, not an answer. Handing that back unjudged is the one thing
+quick-match must not do — a short answer gets trusted faster than a long one, so
+a false positive costs *more* here than it does in a report where the caveats
+are on the page.
+
+Apply all four Step 6 rules, unchanged:
+
+- **Drop false positives.** A shared word is not relevance. An unrelated assay
+  that happens to say "development" is noise. A `.html` QC report is not a
+  dataset — only ~21% of catalogued requests have real data on the endpoint.
+- **Describe at the right level.** Group by MOLNG request, not by file:
+  "MOLNG-4089: 10x Multiome, APOE4 vs APOE3 organoids — 14 files" with one
+  representative path, never 14 paths. `search.py` already groups; keep its
+  grouping, and keep its `files_matching_total` when it held files back.
+- **State the tier on every line.** `[csv]` means a real request record
+  matched. `[inferred]` means you read it off a folder name. Never print a path
+  without one — a bare list of paths is exactly the laundering the tiers exist
+  to prevent, and a terse format is where that slips.
+- **Never cite an `unknown`-tier file.** Excluded by default, and it stays
+  excluded. It counts toward the scope line, not the matches.
+
+Then write, to the screen and nowhere else:
+
+1. **The matches** — one line per request group, best first: request ID, what it
+   is, file count, tier, one representative path.
+2. **What you cut** — one line: how many candidates scored above threshold, how
+   many you dropped, and on what grounds. This is what tells the researcher
+   whether to widen or narrow the query, and it is also the audit trail for a
+   judgment that produced no report to check it against.
+3. **The scope line** — which roots the store covers, when they were scanned,
+   what the filters excluded, and how many `unknown`-tier files sit in scope.
+   **Not optional.** Quick-match's failure mode is that three returned hits read
+   as "there are three", and this repo has already made the expensive version of
+   that mistake: a report concluded no mouse OE/OB Alzheimer's data existed while
+   an entire APEX Aβ40/Aβ42 proteomics dataset sat in a top-level directory the
+   CSV never indexed.
+4. **The handback** — `/forage <goal>` for the full report and its four-mode gap
+   analysis. If the matches look worth reproducing, name the `brew` follow-up and
+   what the researcher has to decide first; do not run it.
+
+No `output/` file, no `.md`, no `.pdf`, no `render_report.py`. If the researcher
+wants the report, that is the full run — offer it, and do not quietly upgrade
+into it.
+
+Step 6q does **not** include Step 7. One scope line is not a gap analysis and
+must never be presented as one. "Nothing matched" from quick-match means
+"nothing matched in what I searched", never "no such data exists" — that claim
+requires the coverage analysis quick-match skips.
 
 ## Step 7 — Gap analysis
 
@@ -301,12 +442,28 @@ kb.append_query(run_id='<run-id>', goals='<goal>',
 
 Then regenerate the rollup: `./.venv/bin/python scripts/rollup.py`.
 
+**`--quick` runs log too.** Same call, with `report_path=''` — the argument is
+optional, and an empty value is what marks a run as report-less. Pass the
+verdicts from Step 6q, and `gaps={}`, since quick-match ran no gap analysis and
+must not imply one. Quick-matches will be the most frequent kind of run, and a
+`query_log.jsonl` that omits them stops describing what researchers actually
+ask — which is the input both `rollup.py` and the planned organizing agent read.
+It costs one command.
+
 ### Bias reporting (if it was enabled in Step 0)
 
 Only when the Step 0 question turned it on. Append a **Context & Influence**
 section to the report and log the run with
 `python3 ../bias/report.py append --file <scratchpad>/bias_run.json`. Format and
 record shape are in `../bias/README.md`.
+
+On a `--quick` run there is no report to carry the section, so the section is
+skipped and the `bias/log.jsonl` record is **not**. Quick-match is the run type
+most steered by the vocabulary and the knowledge store — it has no scan and no
+intake round to introduce anything else — which makes it precisely the influence
+the cross-run view exists to see. Dropping these records would blind the one
+view that can distinguish a vocabulary matching a term from a vocabulary
+narrowing every answer to what previous runs asked about.
 
 forage has the most standing priors of the three agents, and they are the point
 of it — a knowledge store that did not accumulate would be useless. Record where

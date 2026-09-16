@@ -27,7 +27,7 @@ The root `CLAUDE.md` has the reasoning.
 | Anchor | Agent | Command |
 | --- | --- | --- |
 | A specific paper — DOI, URL, PMID, or a PDF | `brew` | `/brew <paper> <what you want from it>` |
-| The lab's own existing data | `forage` | `/forage <goal>` |
+| The lab's own existing data | `forage` | `/forage <goal>` — add `--quick` for a judged file list with no report |
 | A subject, with no specific paper or local dataset in view | `distill` | `/distill <topic>` |
 
 Signals, in case the anchor is not obvious:
@@ -38,6 +38,10 @@ Signals, in case the anchor is not obvious:
 - **`forage`** — "do we already have", "what's on the collection", "did anyone
   generate", "before I run a new experiment", "what data exists for X",
   anything about the knowledge store, undocumented files, or organization debt.
+  Route to `/forage <goal> --quick` when the ask is shaped like a yes/no with
+  paths attached — "do we have anything on X", "just the files" — and say that
+  it answers on screen with one question at most, no report, and cannot scan.
+  Someone who wants the gap analysis or a document wants the full run.
 - **`distill`** — "what do we know about", "state of the field", "compare these
   methods so I can pick one", "background for a grant", "is this claim
   supported", a literature review.

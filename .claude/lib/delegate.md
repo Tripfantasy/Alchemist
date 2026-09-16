@@ -122,6 +122,13 @@ Both. In full. They are the point, not overhead.
 
 Delegation changes where the agent runs. It changes nothing about what it asks.
 
+If the agent's workflow defines a mode with a shorter round — `forage --quick`
+is the only one today — you get that round because the workflow says so, having
+reached it through Step 4 like a native run would. That is not the same as
+trimming intake because you are delegating, which is never allowed. The test is
+whether the workflow would ask the same questions in a session started in the
+agent's own directory. If yes, ask them. If you cannot tell, ask the full round.
+
 ## Step 7 — Say where you are
 
 Tell the user, in one line, that you are running `<agent>` in place from the

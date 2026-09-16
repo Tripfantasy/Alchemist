@@ -6,7 +6,7 @@ Claude-based agentic framework for expediting research lab tasks. Generate actio
 | --- | --- | --- | --- |
 | [distill/](distill/) | `/distill <topic>` | A topic | Cited research report with recommendations |
 | [brew/](brew/) | `/brew <paper>` | A paper (URL, DOI, or PDF) | Reproduction protocol, an analysis notebook, and a list of what the paper fails to document |
-| [forage/](forage/) | `/forage <goal>` | A research goal | List of matching files on a Globus collection, read-only |
+| [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
 
 Each agent's command is named after the agent. You can also just describe what
 you want in plain language — each agent has a skill that triggers on the kind of
@@ -191,7 +191,16 @@ Then, in a session opened in `forage/`:
 
 ```
 /forage <what data are you looking for?>
+/forage <same question> --quick     # judged file list on screen, no report
 ```
+
+`--quick` is for "do we have anything on X at all?". It runs the same search and
+the same judgment — false positives cut, every path tagged `[csv]` or
+`[inferred]` — and skips the written report and the gap analysis. It never
+scans, so it needs no credentials; if the knowledge store does not cover the
+roots you asked about, it says so and hands back the full command. "Nothing
+matched" from it means nothing matched *in what it searched*, never that no such
+data exists.
 
 **To run `/forage` from the repo root instead**, mirror those UUIDs into the
 root's settings once — a session only reads settings from the directory it

@@ -82,6 +82,34 @@ data do we already have on X?" — or simply say "follow workflows/data_discover
 
 All three funnel to the same recipe, so there is one source of truth to edit.
 
+### Quick-match
+
+Add `--quick` when the question is "is there anything on X at all?" and a report
+would be the wrong shape of answer:
+
+```
+/forage Ab42 in cerebral organoids --quick
+```
+
+You get a judged, tier-labelled file list on screen — grouped by MOLNG request,
+with a line on what was cut and a line on what scope was searched. No `output/`
+file, no `.pdf`, one intake question at most.
+
+It is the same search and the same judgment as a full run; `search.py`'s raw
+ranking is never handed back, because it scores word overlap and knows no
+biology. What the mode actually drops is the written report and the four-mode
+gap analysis.
+
+Two things it will not do:
+
+- **Touch the network.** No survey, no scan, at any depth. If the association
+  store does not cover the roots you asked about, it says so and hands back the
+  full command rather than starting a walk. A consequence worth knowing: a
+  quick-match works with no credentials configured.
+- **Claim a gap.** "Nothing matched" means nothing matched in what it searched.
+  A real "no such data exists" needs the coverage analysis only the full run
+  does.
+
 `.claude/settings.json` sets `GLOBUS_AGENT_CLIENT_ID` for the session, so it
 works regardless of which shell you use. **New sessions pick it up
 automatically; a session already running when the file was created will not.**

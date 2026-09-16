@@ -1,6 +1,6 @@
 ---
 description: Find existing Globus data matching a research goal, and report what it cannot answer
-argument-hint: "[research goal, in your own words]"
+argument-hint: "[research goal] [--quick for a judged file list, no report]"
 ---
 
 Run the data discovery workflow.
@@ -14,6 +14,24 @@ paraphrase its steps. If anything here conflicts with it, that file wins.
 $ARGUMENTS
 
 If that is empty, ask for the goal before doing anything else.
+
+## Which mode
+
+`--quick` anywhere in those arguments selects quick-match; strip it before
+passing the rest to `search.py` as the goal. Anything else is a full run. The
+workflow's **Two modes** table is authoritative — read it rather than inferring
+the difference.
+
+Quick-match answers on screen: a judged, tier-labelled file list, a line on what
+was cut, and a scope line. No `output/` file, no `.pdf`. Its two hard edges:
+
+- **It never touches the network.** No survey, no scan, at any depth. If the
+  association store does not cover the requested roots, it stops and hands back
+  the full `/forage <goal>` rather than scanning.
+- **It still judges.** `search.py` is a recall device that knows no biology, so
+  its ranking is never the answer. Cut the false positives, group by MOLNG
+  request, and label every path `[csv]` or `[inferred]`. A terse format is where
+  an unlabelled guess slips through, and quick answers get trusted fastest.
 
 ## Standing context for this collection
 
@@ -49,10 +67,15 @@ association store, which covers everything scanned, before declaring any gap.
 
 ## Deliverable
 
-Both `.md` and `.pdf` in `output/`, per `resources/report_template.md`:
+On a full run, both `.md` and `.pdf` in `output/`, per
+`resources/report_template.md`:
 
 ```bash
 ./.venv/bin/python scripts/render_report.py output/<name>.md
 ```
 
-Then log the run to `knowledge/query_log.jsonl` (workflow Step 8).
+On a `--quick` run, the screen — no file, and no `render_report.py`.
+
+Either way, log the run to `knowledge/query_log.jsonl` (workflow Step 8). Quick
+runs log with `report_path=''`; skipping them would leave the store describing
+only the rarer half of what researchers ask.
