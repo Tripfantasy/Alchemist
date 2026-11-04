@@ -1,0 +1,214 @@
+{
+  "_comment": [
+    "Groups raw terms into the readable families the profile and dashboard show.",
+    "Generic on purpose: no site-specific terms. Matching is case-insensitive.",
+    "",
+    "sequencing_approaches: regexes over a request's Project Type (csv tier).",
+    "  First match wins, so put specific patterns before general ones.",
+    "methods: inferred `assay` terms -> a method family. Specific assay names",
+    "  (a named behavioral test, a vendor's rig) never reach a chart; only the",
+    "  family does. Sequencing assays are excluded here: the request records",
+    "  cover sequencing with better provenance.",
+    "  Families are tried in order, first match wins: keep specific before general",
+    "  (Electron microscopy before Microscopy).",
+    "stage_bands: regexes over inferred `stage` terms -> an ordered band. Time after\n  a treatment or injury is its own band, not a developmental stage.",
+    "tool_classes: inferred `gene` terms -> a genetic-tool class. Genes not",
+    "  listed are biology, not tooling, and stay out of the toolkit view.",
+    "languages: file extensions -> analysis language.",
+    "Unmatched terms are counted and listed in the profile's appendix, so a",
+    "missing mapping is visible rather than silently dropped."
+  ],
+  "sequencing_approaches": [
+    [
+      "multiome",
+      "Single-cell multiome"
+    ],
+    [
+      "atac",
+      "Chromatin accessibility"
+    ],
+    [
+      "slide-?seq|curio|visium|xenium|stereo|spatial",
+      "Spatial transcriptomics"
+    ],
+    [
+      "10x|scrna|single.?cell|cellplex|flex|parse",
+      "Single-cell RNA-seq"
+    ],
+    [
+      "chip|cut&|cutrun|cuttag",
+      "Chromatin profiling"
+    ],
+    [
+      "small ?rna|cir+c?rna|mirna",
+      "Small / circular RNA-seq"
+    ],
+    [
+      "dna-?seq|wgs|exome|genome",
+      "DNA sequencing"
+    ],
+    [
+      "rna-?seq|stranded|poly-?a|ribo",
+      "Bulk RNA-seq"
+    ]
+  ],
+  "methods": {
+    "Electrophysiology": [
+      "electrophysiology",
+      "patch-clamp",
+      "neuralynx",
+      "intan",
+      "in vivo electrophysiology"
+    ],
+    "Calcium & optical imaging": [
+      "calcium imaging",
+      "miniscope",
+      "two-photon",
+      "widefield",
+      "optogenetics"
+    ],
+    "Electron microscopy": [
+      "electron microscopy",
+      "cryo-em",
+      "negative-stain"
+    ],
+    "Microscopy": [
+      "confocal",
+      "light-sheet",
+      "slide scanner",
+      "microscopy",
+      "imaris",
+      "olympus"
+    ],
+    "Spatial transcriptomics": [
+      "xenium",
+      "slide-seq",
+      "curio",
+      "stereo-seq",
+      "spatial"
+    ],
+    "In situ hybridization": [
+      "in situ",
+      "fish",
+      "hcr"
+    ],
+    "Histology & immunostaining": [
+      "immunohistochemistry",
+      "immunostaining"
+    ],
+    "Atlas registration": [
+      "atlas registration"
+    ],
+    "Proteomics": [
+      "proteomics",
+      "mass spectrometry",
+      "lc-ms",
+      "tmt",
+      "phosphoproteomics"
+    ],
+    "Behavior": [
+      "behavior",
+      "behaviour",
+      "tube test",
+      "pose tracking",
+      "social dominance",
+      "deeplabcut"
+    ]
+  },
+  "sequencing_assay_words": [
+    "rna-seq",
+    "atac",
+    "dna-seq",
+    "sequencing",
+    "chip-seq",
+    "cut&",
+    "multiome",
+    "cellplex",
+    "exome",
+    "flex"
+  ],
+  "stage_bands": [
+    [
+      "^embryonic",
+      "Embryonic"
+    ],
+    [
+      "postnatal day ([0-7])$",
+      "Neonatal (P0-P7)"
+    ],
+    [
+      "postnatal day ([89]|1[0-9]|2[0-8])$",
+      "Juvenile (P8-P28)"
+    ],
+    [
+      "postnatal day",
+      "Juvenile (P8-P28)"
+    ],
+    [
+      "adult|aged",
+      "Adult"
+    ],
+    [
+      "^day \\d+$|hours? post|post-(injury|treatment)|^\\d+ ?(h|hr|hrs|d)$",
+      "Post-treatment timepoint"
+    ]
+  ],
+  "tool_classes": {
+    "Fluorescent reporter": [
+      "tdtomato",
+      "gfp",
+      "egfp",
+      "yfp",
+      "mcherry",
+      "reporter"
+    ],
+    "Recombinase driver": [
+      "cre",
+      "creert2",
+      "flp",
+      "driver"
+    ],
+    "Activity indicator": [
+      "cfos",
+      "c-fos",
+      "gcamp",
+      "arc",
+      "npas4"
+    ],
+    "Viral tracer": [
+      "rabies",
+      "aav",
+      "tracer"
+    ]
+  },
+  "languages": {
+    "R": [
+      ".r",
+      ".rmd",
+      ".rds",
+      ".rdata",
+      ".rda",
+      ".rproj",
+      ".qmd"
+    ],
+    "Python": [
+      ".py",
+      ".ipynb",
+      ".h5ad",
+      ".pkl",
+      ".pickle"
+    ],
+    "MATLAB": [
+      ".m",
+      ".mat",
+      ".fig",
+      ".mlx"
+    ],
+    "Shell / pipelines": [
+      ".sh",
+      ".nf",
+      ".smk",
+      ".wdl"
+    ]
+  }
+}

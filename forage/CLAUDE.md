@@ -87,6 +87,10 @@ hand-edit the JSONL files, and never write them from anywhere else.
 - knowledge/ASSOCIATIONS.md - regenerated human view; derived, never authored
 - knowledge/inventory.jsonl - raw endpoint scan cache
 - knowledge/coverage.json - gap-analysis inputs from the last index build
+- knowledge/snapshot.json - aggregated export for other agents
+  (scripts/export_snapshot.py). forage's ONE public interface: sigil reads this
+  and nothing else of forage's. Aggregates only, never per-file records. Bump
+  `schema` on any shape change; consumers refuse an unknown one.
 
 Three invariants the future organizing agent depends on:
 

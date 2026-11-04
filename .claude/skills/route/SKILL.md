@@ -1,6 +1,6 @@
 ---
 name: route
-description: Decide which Alchemist agent handles a request and return the exact command to run. Use when someone describes a research task at the repo root and it is not yet clear whether it belongs to distill, brew, or forage; asks which agent to use, where to start, or how the agents relate; or makes a request that spans more than one of them. Also use for questions about what each agent does or produces without running it.
+description: Decide which Alchemist agent handles a request and return the exact command to run. Use when someone describes a research task at the repo root and it is not yet clear whether it belongs to distill, brew, forage, or sigil; asks which agent to use, where to start, or how the agents relate; or makes a request that spans more than one of them. Also use for questions about what each agent does or produces without running it.
 ---
 
 # Routing
@@ -9,8 +9,8 @@ Identify the right agent and hand back the command.
 
 Routing is for when the agent is *not yet settled* — a vague request, one that
 spans two agents, or a question about which to use. Once it is settled, the
-person can run it right here: `/forage`, `/brew` and `/distill` exist at the
-root and delegate in place via `.claude/lib/delegate.md`.
+person can run it right here: `/forage`, `/brew`, `/distill` and `/sigil` exist at
+the root and delegate in place via `.claude/lib/delegate.md`.
 
 So do not answer a clear, well-formed request with instructions to go somewhere
 else. If someone says "find our existing data on X", that is `/forage <X>` —
@@ -29,6 +29,7 @@ The root `CLAUDE.md` has the reasoning.
 | A specific paper — DOI, URL, PMID, or a PDF | `brew` | `/brew <paper> <what you want from it>` |
 | The lab's own existing data | `forage` | `/forage <goal>` — add `--quick` for a judged file list with no report |
 | A subject, with no specific paper or local dataset in view | `distill` | `/distill <topic>` |
+| The lab as a whole: an overview for new members, collaborators or a talk | `sigil` | `/sigil` |
 
 Signals, in case the anchor is not obvious:
 
@@ -42,6 +43,10 @@ Signals, in case the anchor is not obvious:
   paths attached — "do we have anything on X", "just the files" — and say that
   it answers on screen with one question at most, no report, and cannot scan.
   Someone who wants the gap analysis or a document wants the full run.
+- **`sigil`** — "onboarding overview", "what does the lab work on", "summary
+  for collaborators", "charts of our data for a presentation", anything about
+  the lab's profile as a whole rather than one question. It builds on forage's
+  snapshot, so a lab never scanned by forage gets a thin profile; say so.
 - **`distill`** — "what do we know about", "state of the field", "compare these
   methods so I can pick one", "background for a grant", "is this claim
   supported", a literature review.
@@ -103,7 +108,7 @@ with a different remedy.
 `brew` — its data half handles accessions directly. Worth confirming they want
 the ETL and notebook rather than a literature summary.
 
-**Something none of the three handle** — writing new analysis code, running an
+**Something none of the four handle** — writing new analysis code, running an
 analysis, managing the Globus collection's contents, wet-lab planning from
 scratch. Say so plainly and point at what the closest agent *does* do. Do not
 stretch a request to fit an agent.

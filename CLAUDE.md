@@ -1,12 +1,13 @@
 # Alchemist — repo root
 
-This is the router level. Three self-contained agents live below it:
+This is the router level. Four self-contained agents live below it:
 
 | Directory | Command | Handles |
 | --- | --- | --- |
 | `distill/` | `/distill <topic>` | Researching a topic from the literature |
 | `brew/` | `/brew <paper>` | Reproducing a specific paper's methods |
 | `forage/` | `/forage <goal>` | Finding data already on a Globus collection (`--quick` for a judged file list, no report) |
+| `sigil/` | `/sigil` | A digestible profile of the lab's work, with an interactive dashboard, built from forage's knowledge |
 
 # Your job at this level
 
@@ -75,7 +76,7 @@ The short version:
 # What is safe to do here
 
 - Route a request, and explain what the chosen agent will do and ask.
-- Run an agent in place via `/forage`, `/brew` or `/distill`, following
+- Run an agent in place via `/forage`, `/brew`, `/distill` or `/sigil`, following
   `.claude/lib/delegate.md` exactly.
 - Explain the repo: layout, setup, what each agent produces, its limitations.
 - Repo-wide maintenance: `.gitignore`, the root `README.md`, git operations.
@@ -110,7 +111,7 @@ Opt-in, off by default. Records what influenced a run OTHER than the request
 and that run's clarifying answers: the "About Me" profile, prior outputs, the
 knowledge store, the vocabulary, earlier turns.
 
-It lives at root rather than three times over because its whole value is the
+It lives at root rather than once per agent because its whole value is the
 CROSS-AGENT, cross-run view. A single disclosure looks harmless; the pattern is
 the finding - a profile fact that silently answers a question in nine runs out
 of ten is a standing premise, not context. That view cannot exist inside any one
@@ -120,7 +121,7 @@ agent, which is the one deliberate exception to their self-containment.
 runs a command to enable it, and the question is separate from and additional to
 that agent's intake round, never taking one of its clarifying slots. The agent
 records the answer to `bias/config.json` itself. Enforced identically in all
-three workflows; if you change one, change all three.
+four workflows; if you change one, change all four.
 
 Routing note: `/alchemist` cannot intercept a direct `/distill` run - the root
 command is not loaded when an agent is invoked directly. That is why the ask
@@ -154,6 +155,22 @@ There is no automatic chain. The seams need a person:
 
 When a request spans agents, hand back an ordered sequence and say what the
 person needs to decide between steps.
+
+**The one standing exception: `sigil` reads `forage`'s snapshot.** It is
+permitted because each concern above has an answer, not because they stopped
+mattering:
+
+- **It is an interface, not a reach-in.** forage exports
+  `forage/knowledge/snapshot.json` with its own script, as a versioned
+  aggregate. sigil never reads forage's stores or imports its code.
+- **Nothing it writes becomes a premise.** sigil presents inferences as the
+  lab's soft truth, by the user's decision about its audience: new members and
+  collaborators want to know what the lab does, not how each fact was derived.
+  That is safe only because sigil's output is a description for people and no
+  agent ever takes it as input. forage keeps the tiers in its own store and
+  reports, where its search and gap analysis depend on them.
+- **No run triggers another.** sigil may run forage's exporter (a local,
+  read-only summary) but never a scan. `/forage` never rolls on into `/sigil`.
 
 Delegation does not change this. `/forage` at the root runs forage and stops.
 It never rolls on into `brew` because the results looked promising, and it never

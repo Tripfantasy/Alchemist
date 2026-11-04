@@ -9,8 +9,8 @@
 > between MYH7-knockout and wild-type cardiomyocytes, preferring processed
 > matrices over raw reads.
 
-**Scope searched:** collection `MOCK Example Lab Collection` · roots `/lab_data/` · types `all`
-**Corpus:** 154 files indexed · 133 matched by CSV · 12 inferred · 9 unattributed
+**Scope searched:** collection `MOCK Example Lab Collection` · roots `/lab_data/`, `/rigs/`, `/core_imaging/` · types `all`
+**Corpus:** 169 files indexed · 133 matched by CSV · 27 inferred · 9 unattributed
 
 ---
 
@@ -36,7 +36,7 @@ output. Directly on target, but carries **no request record** — see the caveat
 **Fit:** Single-cell expression with filtered matrices ready to load. Neither
 request names a genotype, so they can serve as a reference atlas, not as the
 comparison itself.
-**Project:** — · **Requester:** Jones, Lee / Garcia, Max · **Status:** Completed
+**Project:** Cardiac regeneration · **Requester:** Jones, Lee / Garcia, Max · **Status:** Completed
 **Platform:** HiSeq / NextSeq 2000
 **Original goal on file:** not recorded
 
@@ -68,6 +68,7 @@ inferred and unverified — confirm before relying on them.**
 | path | inferred as | confidence |
 | --- | --- | --- |
 | `/lab_data/reanalysis/myh7_ko_vs_wt_cardiomyocyte_multiome/` | MYH7 knockout vs wild type, cardiomyocytes, 10x Multiome | 0.75 |
+| `/rigs/patch_clamp/cm_myh7_ko/` | patch-clamp, cardiomyocytes, MYH7 knockout | 0.75 |
 | `/lab_data/reanalysis/sc_LV_d14_mi/` | single-cell, left ventricle, myocardial infarction, day 14 | 0.65 |
 
 ---
@@ -79,6 +80,10 @@ inferred and unverified — confirm before relying on them.**
   one multiome directory records no timepoint, no replicate structure, and no
   genotype assignment per sample. *Requires:* the sample sheet for that
   reanalysis, or a re-run from the source matrices with genotypes declared.
+- **A physiological readout for both genotypes.** `/rigs/patch_clamp/cm_myh7_ko/`
+  suggests patch-clamp recordings from knockout cardiomyocytes only; no
+  wild-type recordings are named anywhere. *Requires:* matched wild-type
+  recordings, or confirmation that the folder holds both.
 - **Statistical power for edge-level comparison.** Replicate count is
   unrecoverable from filenames alone. *Requires:* the original request record.
 
@@ -94,7 +99,7 @@ inferred and unverified — confirm before relying on them.**
   concluding the data does not exist.
 
 ### 3d. Present but undocumented
-- **9 files (4.9 GB)** carry no attributable metadata: no request anchor, and
+- **9 files (2.8 GB)** carry no attributable metadata: no request anchor, and
   folder names too vague to interpret. Largest clusters: `/lab_data/new_data/final2/`
   (3 files), `/lab_data/tmp/backup/v3/` (2 files), `/lab_data/scratch/` (2 files).
   These may contain relevant data; nothing can currently say so.

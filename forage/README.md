@@ -256,6 +256,7 @@ reads the permission list instead: same answer, no side effects.
 | `scripts/build_index.py` | CSV join + vocabulary inference → associations |
 | `scripts/search.py` | lexical recall over the store → ranked candidates |
 | `scripts/kb.py` | the only writer to `knowledge/`; supersession + fingerprints |
+| `scripts/export_snapshot.py` | aggregated, schema-versioned export → `knowledge/snapshot.json`, read by `sigil` |
 | `scripts/rollup.py` | bounded summary → `knowledge/ASSOCIATIONS.md` |
 | `scripts/make_mock_inventory.py` | synthetic tree for testing without Globus |
 | `scripts/render_report.py` | markdown report -> print-quality PDF |

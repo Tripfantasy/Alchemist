@@ -7,7 +7,7 @@ This file is the single source of truth for the procedure. `/forage`, `/brew`
 and `/distill` at the root are thin shims that point here — if you change the
 protocol, change it once, here.
 
-Throughout, `<agent>` is one of `distill`, `brew`, `forage`.
+Throughout, `<agent>` is one of `distill`, `brew`, `forage`, `sigil`.
 
 ---
 

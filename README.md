@@ -7,6 +7,7 @@ Claude-based agentic framework for expediting research lab tasks. Generate actio
 | [distill/](distill/) | `/distill <topic>` | A topic | Cited research report with recommendations |
 | [brew/](brew/) | `/brew <paper>` | A paper (URL, DOI, or PDF) | Reproduction protocol, an analysis notebook, and a list of what the paper fails to document |
 | [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
+| [sigil/](sigil/) | `/sigil` | Nothing (optionally, what to emphasize) | A digestible lab profile (.md + .pdf) and an interactive dashboard (.html), in internal and collaborator editions, built from forage's knowledge |
 
 Each agent's command is named after the agent. You can also just describe what
 you want in plain language — each agent has a skill that triggers on the kind of
@@ -240,6 +241,49 @@ produced by running the real pipeline against the mock collection.
 
 ---
 
+## sigil — lab profile
+
+```
+/sigil
+/sigil lead with the methods, this is for a lab-meeting talk
+```
+
+From the repo root or from a session opened in `sigil/`. It needs no
+credentials.
+
+sigil turns forage's knowledge of the collection into an overview a new lab
+member or a collaborator can read in ten minutes: research themes and how each
+is approached, methods beyond sequencing, biological focus, the toolkit, and a
+clickable word cloud of the lab's vocabulary. The internal edition adds an
+Exploration view: how much forage has catalogued, a zoomable map of where the
+lab's files and storage sit, and how the catalogue has grown. It writes a profile (`.md` + `.pdf`) and a
+self-contained interactive dashboard (`.html`) that opens offline.
+
+On the first run it asks you to describe the lab's focus in a few sentences
+and for the PI's details, and opens every profile with your words. It also
+proposes a few broad research themes from the core's raw theme names and
+request goals, for you to confirm. Each run
+also lists the lab's five most recent papers from PubMed: the lab's own work,
+not collaborations led elsewhere, editorials or preprint duplicates.
+
+Every run produces two editions. The **internal** one names paths, request IDs
+and people. The **collaborator** one names none of them, and the agent asks you
+to review it before sharing. Both present what the lab does plainly, without
+labelling which facts came from request records and which from folder names;
+forage keeps that distinction in its own reports. Nothing is published
+anywhere; the files stay in `sigil/output/`.
+
+Its only input is forage's aggregated snapshot
+(`forage/scripts/export_snapshot.py`). sigil runs that exporter when the
+snapshot is stale, but never a forage scan, so a profile reflects what forage
+has already scanned.
+
+Examples: [`EXAMPLE_lab_profile.md`](sigil/output/EXAMPLE_lab_profile.md),
+its collaborator edition, and [`EXAMPLE_dashboard.html`](sigil/output/EXAMPLE_dashboard.html),
+all built from forage's mock collection.
+
+---
+
 ## Bias reporting (opt-in, off by default)
 
 Every agent starts each run from your request and the answers to its clarifying
@@ -324,8 +368,8 @@ source of truth — regenerate the PDF rather than editing it.
 Client secrets go in the macOS Keychain. UUIDs come from environment variables,
 and the agents are told never to write one into a report.
 
-Seven sample files named `EXAMPLE_*` are committed as an explicit exception,
-listed one by one in `.gitignore`. Each states in its first line that it is
+Thirteen sample files named `EXAMPLE_*` are committed as an explicit exception,
+listed one by one in `.gitignore`. Each states at the top that it is
 synthetic. Do not rename a real run to `EXAMPLE_` — outputs can contain
 unpublished results, and an earlier wildcard rule exposed exactly that.
 
