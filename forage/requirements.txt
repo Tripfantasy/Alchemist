@@ -5,6 +5,10 @@
 #   pip install -r requirements.txt
 globus-sdk>=3.30,<4
 
+# HTTPS range reads for scripts/zip_index.py (already a globus-sdk dependency;
+# listed because zip_index imports it directly).
+requests>=2.28
+
 # Markdown -> HTML for the PDF renderer. PDF generation itself uses headless
 # Chrome (already on this machine) with a cupsfilter fallback, so there is no
 # LaTeX/wkhtmltopdf/weasyprint dependency to install.

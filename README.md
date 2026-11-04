@@ -17,13 +17,14 @@ field: its data half targets GEO accessions, so it works best on papers with
 public sequencing data. Its protocol and gap audit work for any paper. Examples
 throughout use biology.
 
-Run each agent from **inside its own directory** — that is what loads its
-`CLAUDE.md`, workflows, and command.
+Run each agent from **inside its own directory** where you can. That loads its
+`CLAUDE.md`, workflows and command natively. `/forage`, `/brew` and `/distill`
+also work from the repo root, which runs the agent in place. See
+[Choosing an agent](#choosing-an-agent).
 
 **Not sure which one you need?** Start Claude Code at the repo root and run
 `/alchemist <what you're trying to do>`. It picks the agent and gives you the
-command. It routes only — it does not run the agents. See
-[Choosing an agent](#choosing-an-agent).
+command. `/alchemist` itself routes only and does not run the agents.
 
 ---
 
@@ -222,6 +223,14 @@ do. Never grant the client `rw` or an access-manager role.
 A full scan takes about 3 hours at `--depth 5`. Reuse the cached inventory
 unless the roots changed.
 
+**`.zip` archives are opaque to a scan.** Globus lists a file, never what is
+inside it. When the searched scope holds archives, `forage` lists them with
+their size and date and asks whether to look inside. If you agree, it reads
+only each archive's table of contents over HTTPS: seconds and a few MB, never
+a download. The contents then become searchable like any other files.
+Extracting from the archive stays your job. Details are in
+[forage/README.md](forage/README.md#looking-inside-zip-archives).
+
 Examples: [`EXAMPLE_discovery_report.md`](forage/output/EXAMPLE_discovery_report.md)
 and [`EXAMPLE_ASSOCIATIONS.md`](forage/knowledge/EXAMPLE_ASSOCIATIONS.md), both
 produced by running the real pipeline against the mock collection.
@@ -284,7 +293,8 @@ Not used by any agent: Box, ChEMBL, Gmail, Google Calendar, Google Drive,
 Microsoft 365, Zoom.
 
 Globus is not an MCP connector. `forage` calls the Transfer API through
-`globus-sdk`.
+`globus-sdk`. To list `.zip` contents it also reads the collection's HTTPS server
+directly.
 
 ---
 

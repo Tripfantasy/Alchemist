@@ -41,6 +41,14 @@ which is the single source of truth - read it, do not work from memory.
   show the researcher the actual top-level directories with their real cost,
   and scan only what they pick. --path is repeatable. "Scan everything" is a
   three-hour answer to a question that usually needs two directories.
+- .zip archives are opaque to every scan: Globus lists a file, never what is
+  inside it. After the first-pass search, ALWAYS run
+  `scripts/zip_index.py --find <inventory> --folder <scope>`. It is local, with
+  no network calls. If archives are in scope, ASK the researcher whether to look
+  inside, with their size and date (workflow Step 3a). Never open one unasked,
+  and never conclude data is absent while unopened archives remain in scope.
+  The MOLNG-4089 ARC outputs were "missing" across three scans and sat inside a
+  763 GB core archive.
 - resources/vocab.json SHIPS POPULATED (v6, ~250 terms) - first runs do not
   build it from scratch. It is seeded from THIS lab's metadata.csv though, so
   its refusals in `ambiguous` (pt, peri, nc, 7d) are collection-specific
@@ -91,6 +99,14 @@ permission, NOT the code.
    or nothing. Never suggest narrowing the scope; it is not possible.
 3. ReadOnlyTransferClient in scan_endpoint.py blocks 12 mutating methods. A
    backstop only.
+
+scripts/zip_index.py also reads over HTTPS (a token for the collection's
+`https` scope). Same binding layer: the `r` permission. Its in-process
+backstops are a GET/HEAD-only session, a per-archive byte cap
+(`--max-index-mb`, default 256), and a hard stop if the server ignores a Range
+header. It reads an archive's index into memory and never writes fetched bytes
+to disk. That is reading, not copying. Extracting a member is a download, and
+is never this agent's job.
 
 Never grant the client `rw` or an access-manager role, even temporarily. No
 task in this project needs write access. Never verify read-only by attempting
