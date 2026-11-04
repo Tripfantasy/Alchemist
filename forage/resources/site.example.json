@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Site configuration: the identifier formats of YOUR sequencing core.",
+    "Copy to site.json (gitignored) and edit. Scripts prefer site.json when present.",
+    "request_id.regex: matches a request ID in a path or CSV cell; group 1 is the number.",
+    "request_id.format: rebuilds the canonical ID from that number.",
+    "request_id.csv_column: the metadata.csv column holding the request ID.",
+    "project_code_regex: group 1 is an internal project code inside 'Scientific Projects'.",
+    "legacy_anchor_keys: optional. Older anchor key names to keep reading in an existing store."
+  ],
+  "request_id": {
+    "regex": "REQ[-_]?(\\d{3,5})",
+    "format": "REQ-{}",
+    "csv_column": "Request #"
+  },
+  "project_code_regex": "(PRJ-\\d{6})",
+  "legacy_anchor_keys": []
+}

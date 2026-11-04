@@ -147,10 +147,10 @@ Then:
 **What to ask.** One slot, four facts. Do not ask four questions — build options that carry the whole context as a profile, drawn from whatever the request already hints at:
 
 > These markers came from which sample?
-> - **Adult mouse olfactory epithelium, wild-type** — P60+, uninjured
-> - **Adult mouse OE, post-injury** — methimazole or bulbectomy regeneration timecourse
-> - **Embryonic/postnatal mouse OE** — E14–P7, developmental
-> - **Human** — organoid or post-mortem tissue
+> - **Adult mouse heart, wild-type** — 8+ weeks, uninjured
+> - **Adult mouse heart, post-injury** — myocardial infarction regeneration timecourse
+> - **Embryonic/neonatal mouse heart** — E14–P7, developmental
+> - **Human** — iPSC-derived or post-mortem tissue
 >
 > *(Answer "Other" with organism / tissue / genotype / age if none of these fit.)*
 
@@ -239,7 +239,7 @@ This log is what you write the report from. It's also what makes Phase 3 possibl
 - Follow citation trails. A paper's references and its citing papers are usually higher-yield than another search.
 - **Stop on saturation**, not on a count: when new searches keep returning sources you've already seen, that sub-question is done. If you hit the depth tier's target and searches are still turning up genuinely new material, keep going and say so.
 - Track what you searched for and found *nothing* on — that's real information, and it feeds the Gaps section.
-- **Constrain every search with the slot S facts when they exist.** A marker or DE-gene query without the organism, tissue and stage returns literature about a different system, and it looks correct. `Ascl1 progenitor` is a different search from `Ascl1 progenitor olfactory epithelium mouse postnatal`.
+- **Constrain every search with the slot S facts when they exist.** A marker or DE-gene query without the organism, tissue and stage returns literature about a different system, and it looks correct. `Tcf21 fibroblast` is a different search from `Tcf21 fibroblast heart mouse postnatal`.
 - **A local prior is a source, not a search term generator.** When slot P supplied a path, the file's content can be *compared against* the literature and cited as a local prior — it does not silently become the vocabulary you search with. If a term from the local file drives a search, say so in Scope.
 
 ---

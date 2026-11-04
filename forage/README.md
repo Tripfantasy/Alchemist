@@ -72,7 +72,7 @@ Expect exactly one rule for the client identity, with permissions `r`.
 Three ways, in a fresh Claude Code session started in this directory:
 
 ```
-/forage I need data on Ab42 in cerebral organoids
+/forage I need single-cell data on cardiac fibrosis
 ```
 
 The `/forage` slash command (`.claude/commands/forage.md`) is the explicit
@@ -88,10 +88,10 @@ Add `--quick` when the question is "is there anything on X at all?" and a report
 would be the wrong shape of answer:
 
 ```
-/forage Ab42 in cerebral organoids --quick
+/forage cardiac fibrosis single-cell --quick
 ```
 
-You get a judged, tier-labelled file list on screen — grouped by MOLNG request,
+You get a judged, tier-labelled file list on screen — grouped by request,
 with a line on what was cut and a line on what scope was searched. No `output/`
 file, no `.pdf`, one intake question at most.
 
@@ -200,7 +200,7 @@ and includes vague folders that must be refused rather than interpreted.
 ```bash
 ./.venv/bin/python scripts/make_mock_inventory.py --out knowledge/inventory.mock.jsonl
 ./.venv/bin/python scripts/build_index.py --inventory knowledge/inventory.mock.jsonl
-./.venv/bin/python scripts/search.py "APOE4 vs APOE3 organoid gene regulatory networks" --limit 20
+./.venv/bin/python scripts/search.py "MYH7 knockout vs wild-type cardiomyocyte gene regulatory networks" --limit 20
 ```
 
 To reset the store: `rm knowledge/*.jsonl knowledge/*.json knowledge/*.md`
@@ -260,7 +260,8 @@ reads the permission list instead: same answer, no side effects.
 | `scripts/make_mock_inventory.py` | synthetic tree for testing without Globus |
 | `scripts/render_report.py` | markdown report -> print-quality PDF |
 | `scripts/verify_readonly.py` | proves read-only without writing anything |
-| `resources/vocab.json` | editable term dictionary for path inference |
+| `resources/vocab.example.json` | starter term dictionary for path inference; copy to `vocab.json` (gitignored) and grow it from your collection |
+| `resources/site.example.json` | your core's request-ID format (default `REQ-####`); copy to `site.json` (gitignored) |
 | `resources/metadata_example.csv` | 40 synthetic requests; replaced by `metadata.csv` (gitignored) if you supply one |
 | `resources/project_codes.example.json` | optional code → project-name map; replaced by `project_codes.json` (gitignored) |
 | `workflows/data_discovery.md` | **the recipe — single source of truth** |

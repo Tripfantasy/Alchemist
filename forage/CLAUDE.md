@@ -19,6 +19,14 @@ I am a bioinformatician working in a neuroscience department. I have a vested in
   truth; the .pdf is derived - never hand-edit it, regenerate it.
 - Only read the files in the globus directories, NEVER edit, move, or copy files under any circumstances. 
 
+# Site notes
+
+Facts about one specific collection (request-ID format, request counts, local
+lessons) live in `CLAUDE.local.md` beside this file. It is gitignored. Claude
+Code loads it automatically; a delegated run must read it explicitly, right
+after this file. Where it exists it is binding, and where it is more specific
+than this file it wins. Nothing site-specific belongs in this file.
+
 # Invoking the discovery workflow
 
 `/forage <goal>` runs it, or describe a research goal and the
@@ -47,13 +55,16 @@ which is the single source of truth - read it, do not work from memory.
   no network calls. If archives are in scope, ASK the researcher whether to look
   inside, with their size and date (workflow Step 3a). Never open one unasked,
   and never conclude data is absent while unopened archives remain in scope.
-  The MOLNG-4089 ARC outputs were "missing" across three scans and sat inside a
-  763 GB core archive.
-- resources/vocab.json SHIPS POPULATED (v6, ~250 terms) - first runs do not
-  build it from scratch. It is seeded from THIS lab's metadata.csv though, so
-  its refusals in `ambiguous` (pt, peri, nc, 7d) are collection-specific
-  judgments with their evidence recorded in `_comment`. On a new collection,
-  re-derive them rather than inheriting them.
+  Core facilities routinely archive finished pipeline output; an "absent"
+  dataset is often inside one.
+- Site resources follow one pattern: resources/<name> is the site's own copy
+  (gitignored), resources/<name>.example (or _example) is the shipped default,
+  and scripts prefer the site copy (kb.resource). This covers site.json
+  (request-ID format), vocab.json, metadata.csv and project_codes.json.
+- resources/vocab.example.json is a STARTER vocabulary. Copy it to vocab.json
+  and grow it from the site's own metadata and folder names. Refusals in
+  `ambiguous` are collection-specific judgments: record the evidence for each in
+  `_comment`, and re-derive them on a new collection rather than inheriting them.
 
 # Project Structure
 
@@ -81,8 +92,8 @@ Three invariants the future organizing agent depends on:
 
 1. Append only. A changed association is a new record with `supersedes`, never
    an edit. The history shows where metadata is unstable.
-2. Path is not an identity. Paths already changed once during transfer to
-   Globus, so every record also stores MOLNG/flowcell anchors.
+2. Path is not an identity. Paths change during transfer to Globus, so every
+   record also stores request-ID/flowcell anchors.
 3. Every assertion names its source (`csv_join`, `vocab_inference`,
    `model_judgment`, `human_correction`) and its confidence. A hard ID match
    and a guess off a folder name must never be indistinguishable downstream.
@@ -118,17 +129,18 @@ The client secret lives in the macOS Keychain (service
 
 # Data Notes
 
-- resources/metadata.csv holds 70 sequencing requests, all from a single lab.
-- `Request #` (MOLNG-####) is the primary join key; flowcell IDs are secondary.
-- CSV paths (/n/analysis/...) are PRE-TRANSFER and do not exist on the Globus
+- resources/metadata.csv is the sequencing core's request export (gitignored;
+  metadata_example.csv ships with synthetic rows).
+- The request ID (format set in resources/site.json) is the primary join key;
+  flowcell IDs are secondary.
+- CSV result paths are usually PRE-TRANSFER and do not exist on the Globus
   collection. Join on tokens extracted from paths, never on paths themselves.
-- `Analysis Result Paths` is empty for all 70 rows. Derived analysis output
-  cannot be attributed by CSV join - flag this limitation in every report.
+- If `Analysis Result Paths` is unpopulated, derived analysis output cannot be
+  attributed by CSV join - flag this limitation in every report.
 - THE CSV INDEXES SEQUENCING ONLY. Proteomics, EM, imaging, behavior and ephys
-  have no MOLNG number and cannot appear in it. Never conclude "no data exists"
-  from the CSV alone - search the association store, which covers everything
-  scanned. The 2026-08-31 report made this mistake and missed an entire APEX
-  Ab40/Ab42 proteomics dataset in a top-level proteomics directory the CSV never indexed.
-- Only ~21% of catalogued requests have real data on the endpoint; many MOLNG
-  entries are .html QC reports, not datasets. Check file types before claiming
-  a request is "available".
+  have no request number and cannot appear in it. Never conclude "no data
+  exists" from the CSV alone - search the association store, which covers
+  everything scanned. A whole proteomics dataset in a directory the CSV never
+  indexed is exactly what that mistake misses.
+- Many catalogued requests may have only .html QC reports on the endpoint, not
+  datasets. Check file types before claiming a request is "available".

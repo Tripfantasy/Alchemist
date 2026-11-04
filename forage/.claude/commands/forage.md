@@ -29,7 +29,7 @@ was cut, and a scope line. No `output/` file, no `.pdf`. Its two hard edges:
   association store does not cover the requested roots, it stops and hands back
   the full `/forage <goal>` rather than scanning.
 - **It still judges.** `search.py` is a recall device that knows no biology, so
-  its ranking is never the answer. Cut the false positives, group by MOLNG
+  its ranking is never the answer. Cut the false positives, group by
   request, and label every path `[csv]` or `[inferred]`. A terse format is where
   an unlabelled guess slips through, and quick answers get trusted fastest.
 
@@ -54,14 +54,13 @@ binding protection is the collection permission, not the in-process guard.
 question. A full re-scan takes hours. Reuse unless the roots differ or the tree
 has changed; re-index only if `resources/vocab.json` changed since the last build.
 
-## The lesson from the first run
+## The CSV is not the collection
 
 `resources/metadata.csv` indexes **sequencing requests only**. Proteomics,
-EM, imaging, behavior and ephys have no MOLNG number and are invisible to it.
+EM, imaging, behavior and ephys have no request number and are invisible to it.
 
-A previous report concluded "no mouse OE/OB Alzheimer's data exists" on the
-strength of that CSV. It was wrong — a large APEX Aβ40/Aβ42 proteomics dataset
-was sitting in a top-level proteomics directory the CSV never indexed.
+A report that concludes "no such data exists" on the strength of that CSV can
+miss a whole dataset sitting in a directory the CSV never indexed.
 **Never treat absence from the CSV as absence from the collection.** Search the
 association store, which covers everything scanned, before declaring any gap.
 

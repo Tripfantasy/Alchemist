@@ -2,7 +2,7 @@
 
 Three-tier attribution, and every file lands in exactly one tier:
 
-  csv       a MOLNG or flowcell token in the file's path matched a request in
+  csv       a request-ID or flowcell token in the file's path matched a request in
             metadata.csv -> full request metadata, confidence 0.95
   inferred  no match; meaning derived from path tokens via resources/vocab.json
             -> confidence 0.25-0.75, capped below any csv join
@@ -11,8 +11,8 @@ Three-tier attribution, and every file lands in exactly one tier:
             they are precisely the files nobody has documented.
 
 Why token matching and not path matching: the CSV's Flowcell Result Paths are
-pre-transfer (/n/analysis/<lab>/...) and do not exist on the Globus collection.
-MOLNG ids and flowcell ids survive the move; path prefixes do not.
+pre-transfer and do not exist on the Globus collection. Request IDs and
+flowcell IDs survive the move; path prefixes do not.
 
 Usage
 -----
@@ -35,19 +35,11 @@ import kb  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _metadata_csv() -> Path:
-    """Real metadata if present, else the synthetic example.
-
-    metadata.csv carries named requesters and internal paths, so it is
-    gitignored and never ships. A fresh clone gets metadata_example.csv -- same
-    35 columns, synthetic rows -- so the mock pipeline runs out of the box.
-    """
-    real = ROOT / "resources" / "metadata.csv"
-    return real if real.exists() else ROOT / "resources" / "metadata_example.csv"
-
-
-METADATA_CSV = _metadata_csv()
-VOCAB_JSON = ROOT / "resources" / "vocab.json"
+# Real metadata, vocabulary and site config if present, else the shipped
+# examples. The real files carry one institution's identifiers, so they are
+# gitignored; see kb.resource().
+METADATA_CSV = kb.resource("metadata.csv")
+VOCAB_JSON = kb.resource("vocab.json")
 PROJECT_CODES_JSON = ROOT / "resources" / "project_codes.json"
 INVENTORY = ROOT / "knowledge" / "inventory.jsonl"
 COVERAGE = ROOT / "knowledge" / "coverage.json"
@@ -64,16 +56,16 @@ WEAK = ("modifier", "species", "stage")
 
 
 def load_requests() -> Tuple[Dict[str, dict], Dict[str, str]]:
-    """Return (molng -> request metadata, flowcell -> molng)."""
+    """Return (request id -> request metadata, flowcell -> request id)."""
     if not METADATA_CSV.exists():
         sys.exit("missing {}".format(METADATA_CSV))
 
-    by_molng: Dict[str, dict] = {}
-    flowcell_to_molng: Dict[str, str] = {}
+    by_request: Dict[str, dict] = {}
+    flowcell_to_request: Dict[str, str] = {}
 
     with METADATA_CSV.open(newline="", encoding="utf-8-sig") as fh:
         for row in csv.DictReader(fh):
-            rid = (row.get("Request #") or "").strip().upper()
+            rid = (row.get(kb.REQUEST_COLUMN) or "").strip().upper()
             if not rid:
                 continue
             meta = {
@@ -96,12 +88,12 @@ def load_requests() -> Tuple[Dict[str, dict], Dict[str, str]]:
                 "csv_analysis_paths": _clean(row.get("Analysis Result Paths"), limit=800),
             }
             meta["project_code"] = _project_code(meta["scientific_project"])
-            by_molng[rid] = meta
+            by_request[rid] = meta
 
             for anchor in kb.extract_anchors(meta["csv_flowcell_paths"])["flowcell"]:
-                flowcell_to_molng[anchor] = rid
+                flowcell_to_request[anchor] = rid
 
-    return by_molng, flowcell_to_molng
+    return by_request, flowcell_to_request
 
 
 def _clean(value: Optional[str], limit: int = 300) -> str:
@@ -110,7 +102,7 @@ def _clean(value: Optional[str], limit: int = 300) -> str:
 
 
 def _project_code(text: str) -> str:
-    m = re.search(r"(SCI-\d{6})", text or "")
+    m = kb.PROJECT_CODE_RE.search(text or "")
     return m.group(1) if m else ""
 
 
@@ -153,11 +145,11 @@ class Vocab:
         """Split a path into candidate vocabulary tokens.
 
         Handles snake_case, kebab-case, dots, and camelCase run-ons, so
-        /sc_OE_h19/CriticalPeriod/x.rmd yields sc, oe, h19, critical, period.
+        /sc_LV_d14/HeartRegen/x.rmd yields sc, lv, d14, heart, regen.
 
         Two guards against spurious short matches: the file extension is
         stripped before tokenizing (otherwise "integrated.h5ad" decomposes to
-        h/5/ad and "ad" reads as Alzheimer's), and sub-splitting fires only on
+        h/5/ad and "ad" reads as a disease abbreviation), and sub-splitting fires only on
         genuine camelCase, never on digit boundaries inside an alnum run.
         """
         segments = [s for s in path.split("/") if s]
@@ -340,8 +332,8 @@ def collapse_instrument_bundles(
 
 def classify(
     entry: dict,
-    by_molng: Dict[str, dict],
-    flowcell_to_molng: Dict[str, str],
+    by_request: Dict[str, dict],
+    flowcell_to_request: Dict[str, str],
     vocab: Vocab,
 ) -> dict:
     """Assign one file to a tier with metadata, source, and evidence."""
@@ -352,18 +344,18 @@ def classify(
             entry.get("bundle_label", "instrument session"),
             entry.get("bundle_count", 0))
 
-    # tier 1: hard join on MOLNG, else on flowcell id
-    matched_id = next((m for m in anchors.get("molng", []) if m in by_molng), None)
-    via = "molng"
+    # tier 1: hard join on request id, else on flowcell id
+    matched_id = next((m for m in kb.request_anchors(anchors) if m in by_request), None)
+    via = "request_id"
     if not matched_id:
         for fc in anchors.get("flowcell", []):
-            if fc in flowcell_to_molng:
-                matched_id = flowcell_to_molng[fc]
+            if fc in flowcell_to_request:
+                matched_id = flowcell_to_request[fc]
                 via = "flowcell:" + fc
                 break
 
     if matched_id:
-        meta = dict(by_molng[matched_id])
+        meta = dict(by_request[matched_id])
         meta["file_role"] = ext_info["role"]
         meta["file_group"] = ext_info["group"]
         meta["terms"] = _terms_from_request(meta)
@@ -409,7 +401,7 @@ def classify(
         "metadata": {"file_role": ext_info["role"], "file_group": ext_info["group"],
                      "terms": [], "bundle_count": entry.get("bundle_count", 0)},
         "evidence": {"matched_via": "none", "anchors": anchors,
-                     "note": "no MOLNG/flowcell match and path tokens too vague"},
+                     "note": "no request-id/flowcell match and path tokens too vague"},
     }
 
 
@@ -424,7 +416,7 @@ def _terms_from_request(meta: dict) -> List[str]:
 def build_coverage(
     files: List[dict],
     classified: List[dict],
-    by_molng: Dict[str, dict],
+    by_request: Dict[str, dict],
     scan_meta: dict,
 ) -> dict:
     """Everything the gap section of the report needs."""
@@ -441,11 +433,11 @@ def build_coverage(
         if rid:
             seen_requests.add(rid)
 
-    missing = sorted(set(by_molng) - seen_requests)
+    missing = sorted(set(by_request) - seen_requests)
     # Requests the CSV itself never gave a path for -- distinct from requests
     # that had a path but whose files are absent from the scanned scope.
     never_pathed = sorted(
-        r for r in missing if not by_molng[r].get("csv_flowcell_paths")
+        r for r in missing if not by_request[r].get("csv_flowcell_paths")
     )
     pathed_but_absent = sorted(set(missing) - set(never_pathed))
 
@@ -459,7 +451,7 @@ def build_coverage(
         "files_by_tier": dict(tier_counts),
         "bytes_by_tier": dict(bytes_by_tier),
         "files_by_group": dict(group_counts),
-        "requests_total": len(by_molng),
+        "requests_total": len(by_request),
         "requests_with_files": len(seen_requests),
         "requests_matched": sorted(seen_requests),
         "requests_missing_no_path_in_csv": never_pathed,
@@ -468,7 +460,7 @@ def build_coverage(
         "note_analysis_paths_empty": (
             "Analysis Result Paths is 0%% populated across all %d requests, so no "
             "derived analysis output can be attributed by CSV join; such files can "
-            "only reach the 'inferred' tier." % len(by_molng)
+            "only reach the 'inferred' tier." % len(by_request)
         ),
     }
 
@@ -483,13 +475,13 @@ def main() -> None:
     args = ap.parse_args()
 
     scan_meta, files = read_inventory(Path(args.inventory))
-    by_molng, flowcell_to_molng = load_requests()
+    by_request, flowcell_to_request = load_requests()
     vocab = Vocab.load()
     run_id = args.run_id or kb.new_run_id()
     collection = scan_meta.get("collection_id", "unknown")
 
     print("requests: {} | flowcell keys: {} | vocab v{}".format(
-        len(by_molng), len(flowcell_to_molng), vocab.version))
+        len(by_request), len(flowcell_to_request), vocab.version))
     print("inventory: {} files from {}".format(len(files), args.inventory))
 
     files, fold = collapse_instrument_bundles(files, vocab)
@@ -499,7 +491,7 @@ def main() -> None:
                   fold["bundles_created"], fold["files_folded"],
                   fold["records_before"], fold["records_after"]))
 
-    verdicts = [classify(f, by_molng, flowcell_to_molng, vocab) for f in files]
+    verdicts = [classify(f, by_request, flowcell_to_request, vocab) for f in files]
 
     if not args.dry_run:
         live = kb.current_fingerprints()
@@ -532,7 +524,7 @@ def main() -> None:
         rollup.build()
         print("rollup -> {}".format(kb.ROLLUP))
 
-    coverage = build_coverage(files, verdicts, by_molng, scan_meta)
+    coverage = build_coverage(files, verdicts, by_request, scan_meta)
     if not args.dry_run:
         COVERAGE.parent.mkdir(parents=True, exist_ok=True)
         COVERAGE.write_text(json.dumps(coverage, indent=2), encoding="utf-8")

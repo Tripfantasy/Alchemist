@@ -107,7 +107,7 @@ python3 bias/report.py append --file run.json
 
 **Asked and answered:**
 - Scope → cluster annotation, marker interpretation only
-- Sample → mouse · olfactory epithelium · wild-type · P60
+- Sample → mouse · heart · wild-type · adult
 - Prior → literature only
 
 **Influenced this run beyond the above:**

@@ -60,7 +60,7 @@ Which agent you want comes down to what the request is anchored on:
 Or let it decide for you. From a session at the repo root:
 
 ```
-/alchemist do we already have organoid data, and what does the literature say?
+/alchemist do we already have cardiac single-cell data, and what does the literature say?
 ```
 
 It returns the agent, the command, and what that agent will ask first.
@@ -170,8 +170,11 @@ To use your own data, add:
 | --- | --- |
 | `resources/metadata.csv` | Your metadata export. Both scripts prefer it over the example when present. |
 | `resources/project_codes.json` | Optional. Maps internal project codes to readable names. |
+| `resources/site.json` | Your core's request-ID format. Copy `site.example.json`, which defaults to `REQ-####`. |
+| `resources/vocab.json` | Your vocabulary. Copy the starter `vocab.example.json` and grow it from your own metadata and folder names. |
+| `CLAUDE.local.md` | Optional site notes for the agent: collection facts and local lessons. Loaded automatically. |
 
-Both are gitignored.
+All of these are gitignored.
 
 ### Connect to a real collection
 
@@ -314,6 +317,8 @@ source of truth — regenerate the PDF rather than editing it.
 | `.claude/settings.json` (root) | Generated mirror of the above, for runs delegated from the root. `agent_env.py sync` writes it. |
 | `forage/resources/metadata.csv` | Real exports contain names and internal paths. `metadata_example.csv` ships instead. |
 | `forage/resources/project_codes.json` | Internal project codes. `project_codes.example.json` ships instead. |
+| `forage/resources/site.json`, `forage/resources/vocab.json` | A site's request-ID format and its vocabulary, grown from its own data. `*.example.json` ships instead. |
+| `CLAUDE.local.md` (any agent) | Site notes: collection facts, local lessons from past runs |
 | venvs, `.env`, `*.secret`, `tokens.json` | — |
 
 Client secrets go in the macOS Keychain. UUIDs come from environment variables,

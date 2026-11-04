@@ -43,7 +43,9 @@ Confirm it worked (`pwd`) before going on. Everything after this depends on it.
 
 ## Step 2 — Load the agent's rules
 
-Read `<agent>/CLAUDE.md` in full, by absolute path, before anything else.
+Read `<agent>/CLAUDE.md` in full, by absolute path, before anything else. Then,
+if it exists, read `<agent>/CLAUDE.local.md`: the gitignored site notes for
+that agent's collection, which CLAUDE.md defers to. Both are binding.
 
 **For the rest of this run it outranks the root `CLAUDE.md`.** Where they
 conflict — and they do, since the root's default is "route, do not execute" —

@@ -11,11 +11,14 @@ Design rules, which the future database-organization agent depends on:
   1. APPEND ONLY. A changed association is a new record carrying
      ``supersedes``, never an edit. The history is signal: it shows where
      metadata is unstable.
-  2. PATH IS NOT AN IDENTITY. Paths already changed once when this data was
-     transferred to Globus. Every record also stores the MOLNG / flowcell
-     anchors extracted from the path, so files can be re-matched after a move.
-  3. EVERY ASSERTION NAMES ITS SOURCE. A hard MOLNG join and a guess off a
-     folder name must never be indistinguishable downstream.
+  2. PATH IS NOT AN IDENTITY. Paths change when data is transferred. Every
+     record also stores the request-ID / flowcell anchors extracted from the
+     path, so files can be re-matched after a move.
+  3. EVERY ASSERTION NAMES ITS SOURCE. A hard request-ID join and a guess off
+     a folder name must never be indistinguishable downstream.
+
+The request-ID format is site-specific and configured in resources/site.json
+(gitignored), falling back to resources/site.example.json.
 
 ASSOCIATIONS.md is a regenerated human view; it is derived, never authored.
 """
@@ -49,10 +52,54 @@ SOURCE_RANK = {
 
 TIERS = ("csv", "inferred", "unknown")
 
-MOLNG_RE = re.compile(r"MOLNG[-_]?(\d{3,5})", re.IGNORECASE)
+RESOURCES = ROOT / "resources"
+
+
+def resource(name: str) -> Path:
+    """A site's own copy of a resource if present, else the shipped example.
+
+    Site files (site.json, vocab.json, metadata.csv, project_codes.json) carry
+    one institution's identifiers and stay gitignored. Each ships as an
+    *.example.* twin so a fresh clone runs.
+    """
+    real = RESOURCES / name
+    if real.exists():
+        return real
+    stem, _, ext = name.rpartition(".")
+    # Two naming styles ship: site.example.json and metadata_example.csv.
+    for candidate in ("{}.example.{}", "{}_example.{}"):
+        path = RESOURCES / candidate.format(stem, ext)
+        if path.exists():
+            return path
+    return RESOURCES / "{}.example.{}".format(stem, ext)
+
+
+def _site() -> dict:
+    return json.loads(resource("site.json").read_text(encoding="utf-8"))
+
+
+SITE = _site()
+# The sequencing core's request-ID format, e.g. REQ-1234. The regex's first
+# group is the numeric part; `format` rebuilds the canonical ID from it.
+REQUEST_RE = re.compile(SITE["request_id"]["regex"], re.IGNORECASE)
+REQUEST_FMT = SITE["request_id"]["format"]
+REQUEST_COLUMN = SITE["request_id"].get("csv_column", "Request #")
+PROJECT_CODE_RE = re.compile(SITE.get("project_code_regex", r"(PRJ-\d{6})"))
 # Illumina/NovaSeq flowcell IDs: 9-10 alnum, at least one digit, upper-ish.
-# Also allow the all-digit run IDs seen in the CSV (e.g. 2306080007).
+# Also allow all-digit run IDs (e.g. 2306080007).
 FLOWCELL_RE = re.compile(r"\b(?=[A-Z0-9]{9,10}\b)(?=.*\d)[A-Z0-9]{9,10}\b")
+
+
+ANCHOR_KEYS = ["request"] + list(SITE.get("legacy_anchor_keys", []))
+
+
+def request_anchors(anchors: dict) -> List[str]:
+    """Request IDs from an anchors dict. Also reads any legacy key names a
+    site lists in site.json, so stores written under an older key still work."""
+    for key in ANCHOR_KEYS:
+        if anchors.get(key):
+            return anchors[key]
+    return []
 
 
 def utc_now() -> str:
@@ -79,19 +126,19 @@ def extract_anchors(path: str) -> Dict[str, List[str]]:
     """Pull prefix-independent join keys out of a path.
 
     These survive re-rooting, which full paths do not -- the CSV's
-    /n/analysis/... prefixes do not exist on the Globus collection.
+    pre-transfer prefixes do not exist on the Globus collection.
     """
-    molng = ["MOLNG-{}".format(m) for m in MOLNG_RE.findall(path)]
+    requests = [REQUEST_FMT.format(m) for m in REQUEST_RE.findall(path)]
     segments = [s for s in path.split("/") if s]
     flowcells = []
     for seg in segments:
         base = seg.split(".")[0]
-        if MOLNG_RE.fullmatch(base):
+        if REQUEST_RE.fullmatch(base):
             continue
         for hit in FLOWCELL_RE.findall(base.upper()):
             flowcells.append(hit)
     return {
-        "molng": sorted(set(molng)),
+        "request": sorted(set(requests)),
         "flowcell": sorted(set(flowcells)),
     }
 
@@ -326,10 +373,10 @@ def write_rollup() -> Path:
         "",
     ]
 
-    # Group by MOLNG so the view reads the way the core organizes work.
+    # Group by request ID so the view reads the way the core organizes work.
     groups: Dict[str, List[dict]] = {}
     for rec in live.values():
-        anchors = rec.get("anchors", {}).get("molng") or ["(unanchored)"]
+        anchors = request_anchors(rec.get("anchors", {})) or ["(unanchored)"]
         groups.setdefault(anchors[0], []).append(rec)
 
     for anchor in sorted(groups, key=lambda a: (a == "(unanchored)", a)):

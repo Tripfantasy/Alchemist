@@ -15,7 +15,7 @@
 
 Ordered by fit. Grouped by sequencing request, not by file.
 
-### <MOLNG-####> — <Project Type>
+### <REQUEST-ID> — <Project Type>
 **Fit:** <one line: why this serves the goal>
 **Project:** <Scientific Projects> · **Requester:** <name> · **Status:** <status>
 **Platform:** <Machine Type>, <Read Type> <Read Length>
@@ -40,7 +40,7 @@ inferred and unverified — confirm before relying on them.**
 
 | path | inferred as | confidence |
 | --- | --- | --- |
-| `/lab_data/reanalysis/sc_OE_h19/` | single-cell, olfactory epithelium, H19 | 0.60 |
+| `/lab_data/reanalysis/sc_LV_d14_mi/` | single-cell, left ventricle, myocardial infarction, day 14 | 0.65 |
 
 ---
 
@@ -55,7 +55,7 @@ different remedy.
 
 ### 3b. Requested but never delivered
 - <N> requests in the metadata CSV have no result path recorded. Relevant here:
-  <MOLNG-####> (<project type>) — <why it would have mattered>.
+  <REQUEST-ID> (<project type>) — <why it would have mattered>.
 
 ### 3c. Indexed but absent from the scanned scope
 - <N> requests have a CSV path but no matching files under `<roots>`. These may
@@ -63,22 +63,22 @@ different remedy.
   concluding the data does not exist.
 
 ### 3d. Present but undocumented
-- <N> files (<size>) on the endpoint carry no attributable metadata — no MOLNG
+- <N> files (<size>) on the endpoint carry no attributable metadata — no request
   anchor, and folder names too vague to interpret. Largest clusters:
   `<path>` (<N> files). These may contain relevant data; nothing can currently
   say so.
 
 ### Standing limitations
-- `Analysis Result Paths` is unpopulated for all 70 requests, so no derived
+- `Analysis Result Paths` is unpopulated for all <N> requests, so no derived
   analysis output can be matched by request ID. Processed results reach the
   inferred tier at best.
-- All 70 requests are from one lab; no cross-lab comparison is supported.
+- All <N> requests are from one lab; no cross-lab comparison is supported.
 - <any paths that returned permission errors during the scan>
 
 ---
 
 ## 4. Suggested next steps
-- <concrete action, e.g. "confirm whether MOLNG-#### was transferred">
+- <concrete action, e.g. "confirm whether <REQUEST-ID> was transferred">
 - <concrete action, e.g. "add a README to /lab_data/new_data/ — 9 files unattributable">
 
 ---

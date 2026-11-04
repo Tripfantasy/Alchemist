@@ -108,7 +108,7 @@ explains what earns it.
 **Ask when the goal is vague.** The test: could two different datasets both
 plausibly satisfy this request? Then it is too vague. Typical gaps:
 
-- **Organism / model** — mouse, human, organoid, paddlefish?
+- **Organism / model** — mouse, human, zebrafish, a cell line?
 - **Tissue or region** — OE, OB, VNO, cortex, whole brain?
 - **Modality** — bulk vs single-cell vs single-nucleus vs spatial vs imaging?
 - **Comparison** — what is being contrasted? Genotype, age, condition, timepoint?
@@ -219,8 +219,8 @@ count — and **then** ask the folder-scope question from Step 1 with those
 directories as real options:
 
 > The collection has these top-level directories. Which should the scan cover?
-> - **`/projects/` only** — ~40k files. Where the MOLNG sequencing requests live
-> - **`/projects/` + `/proteomics/`** — adds the APEX mass-spec data the CSV never indexes
+> - **`/projects/` only** — ~40k files. Where the sequencing requests live
+> - **`/projects/` + `/proteomics/`** — adds the mass-spec data the CSV never indexes
 > - **`/imaging/`** — ~1.7M files, mostly per-trial microscopy. Hours to walk
 > - **Everything** — the full ~3-hour scan
 >
@@ -232,7 +232,7 @@ Rules for this round:
   choose it deliberately. "Everything" alone gets chosen by default, and the
   cost only surfaces once the scan is already running.
 - **Offer a narrow default first.** Most goals are answered by one or two
-  directories. A researcher asking about stroke imaging does not need the
+  directories. A researcher asking about an imaging cohort does not need the
   sequencing tree walked.
 - **Ask about depth only when the survey shows it matters** — a tree of
   instrument session folders needs depth 5; a flat directory of `.h5ad` files
@@ -279,8 +279,9 @@ last, and say in the report which roots the coverage numbers cover.
 ## Step 3a — Archives in scope: detect, then ask
 
 A scan sees a `.zip` as one file. Data that exists can sit inside one and be
-invisible to every search. The MOLNG-4089 ARC outputs did, in a 763 GB core
-archive, after three scans had called them missing.
+invisible to every search. Core facilities routinely archive finished
+pipeline output, so a complete set of processed results can be "missing"
+across every scan while sitting inside one archive.
 
 **Detect, always.** After the first-pass search (Step 5), whether the inventory
 was scanned this run or reused, list the archives in scope. This step is local
@@ -367,8 +368,8 @@ it does not know biology.
 
 - **Drop false positives.** A term match is not relevance. A `.fastq.gz` from an
   unrelated assay that happens to share the word "development" is noise.
-- **Describe at the right level.** Group by MOLNG request. A researcher wants
-  "MOLNG-4089: 10x Multiome, APOE4 vs APOE3 organoids" — not 14 FASTQ filenames.
+- **Describe at the right level.** Group by request. A researcher wants
+  "REQ-1234: 10x Multiome, knockout vs wild type" — not 14 FASTQ filenames.
   Give representative paths and say how many files the request holds.
 - **Never launder a guess into a fact.** State the tier. A `csv` file carries
   real request metadata; an `inferred` file is your reading of a folder name.
@@ -413,9 +414,9 @@ Apply all four Step 6 rules, unchanged:
 
 - **Drop false positives.** A shared word is not relevance. An unrelated assay
   that happens to say "development" is noise. A `.html` QC report is not a
-  dataset — only ~21% of catalogued requests have real data on the endpoint.
-- **Describe at the right level.** Group by MOLNG request, not by file:
-  "MOLNG-4089: 10x Multiome, APOE4 vs APOE3 organoids — 14 files" with one
+  dataset — many catalogued requests have only QC reports on the endpoint.
+- **Describe at the right level.** Group by request, not by file:
+  "REQ-1234: 10x Multiome, knockout vs wild type — 14 files" with one
   representative path, never 14 paths. `search.py` already groups; keep its
   grouping, and keep its `files_matching_total` when it held files back.
 - **State the tier on every line.** `[csv]` means a real request record
@@ -436,9 +437,8 @@ Then write, to the screen and nowhere else:
 3. **The scope line** — which roots the store covers, when they were scanned,
    what the filters excluded, and how many `unknown`-tier files sit in scope.
    **Not optional.** Quick-match's failure mode is that three returned hits read
-   as "there are three", and this repo has already made the expensive version of
-   that mistake: a report concluded no mouse OE/OB Alzheimer's data existed while
-   an entire APEX Aβ40/Aβ42 proteomics dataset sat in a top-level directory the
+   as "there are three". The expensive version of that mistake is a report
+   concluding no data exists while an entire dataset sits in a directory the
    CSV never indexed.
 4. **The handback** — `/forage <goal>` for the full report and its four-mode gap
    analysis. If the matches look worth reproducing, name the `brew` follow-up and
@@ -468,20 +468,20 @@ different remedies, so never merge them:
 
 That last row is the one researchers actually need. Say plainly what new
 experiment or acquisition their question requires. Be specific: "no wild-type
-VNO timepoint before P7 exists, so the critical-period onset comparison cannot
-be made from these data."
+timepoint before day 7 post-injury exists, so the early-response comparison
+cannot be made from these data."
 
 Two standing caveats to carry into every report:
 
-- **`Analysis Result Paths` is empty for all 70 requests.** No derived analysis
-  output can be attributed by CSV join. Anything downstream of raw reads can
+- **If `Analysis Result Paths` is unpopulated,** no derived analysis output can
+  be attributed by CSV join. Anything downstream of raw reads can
   only ever reach the `inferred` tier.
-- **Every request is from the same lab.** The CSV cannot support any cross-lab claim.
+- **If every request is from one lab,** the CSV cannot support a cross-lab claim.
 - **The CSV indexes SEQUENCING ONLY.** Proteomics, EM, imaging, behavior and
-  ephys have no MOLNG number and cannot appear in it. Never report "no data
+  ephys have no request number and cannot appear in it. Never report "no data
   exists" on the strength of the CSV alone — search the association store,
-  which covers everything scanned. The 2026-08-31 report made exactly this
-  mistake and missed an entire APEX Aβ40/Aβ42 proteomics dataset.
+  which covers everything scanned. That mistake misses whole datasets in
+  directories the CSV never indexed.
 
 ## Step 8 — Log the run
 
@@ -526,9 +526,9 @@ they actually steered *this* run:
 
 - **`knowledge_store`** — prior queries in `query_log.jsonl` that shaped these
   search terms or rankings
-- **`vocab`** — terms this collection's v6 vocabulary refused or matched, which
-  another collection would treat differently. The `pt` refusal excluding
-  stroke-labelled paths is the worked example
+- **`vocab`** — terms the site vocabulary refused or matched, which another
+  collection would treat differently. A refused abbreviation that excluded the
+  very paths the goal was about is the case to log
 - **`claude_md_profile`** — anything the About Me block supplied that the intake
   round did not ask
 
@@ -555,34 +555,29 @@ Also offer to add the missing term to `resources/vocab.json` so the same
 mistake does not recur. Bump `version` when you do — associations record the
 vocab version that produced them.
 
-### The vocabulary ships populated, and it is site-specific
+### The vocabulary is a starter, and it becomes site-specific
 
-`resources/vocab.json` is **not** empty on a fresh clone. It ships at v6 with
-roughly 250 terms across `tissue`, `assay`, `gene`, `species`, `condition` and
-`stage`, plus a `ambiguous` refusal list. First runs do not start from nothing.
+A fresh clone ships `resources/vocab.example.json`: a starter set of general
+tissue, assay, species, stage and file-type terms, plus generic refusals in
+`ambiguous` (`final2`, `tmp`, `backup`, `misc` ...). Copy it to
+`resources/vocab.json` (gitignored), which the scripts prefer when present, and
+grow it from the site's own data:
 
-But it was **seeded from one lab's `metadata.csv`**, and it carries that
-collection's idiosyncrasies as deliberate decisions:
+- **Seed it from the metadata.** The terms in the CSV's project, goal and
+  project-type columns, and the abbreviations the folders actually use. A lab
+  that writes "left ventricle" as `LV` needs `lv` in `tissue`.
+- **Refuse what you measure to be wrong.** An abbreviation that is also a
+  person's initials, a plasmid name or a citation fragment will mislabel files.
+  When a term's precision on the collection is poor, add it to `ambiguous`,
+  and capture the real meaning through unambiguous bigrams the tokenizer
+  already produces instead.
+- **Record the evidence.** Every refusal goes in `_comment` with the counts
+  that justified it. A refusal with no recorded reason cannot be safely
+  reversed later.
+- **Bump `version`** on every edit. Associations stamp `vocab_version`, so the
+  store stays interpretable across the change.
 
-- `oe`, `vno`, `aob` and the rest of the olfactory vocabulary, because that is
-  what this lab studies
-- `pt` **refused** in `ambiguous`, because on this collection it means
-  photothrombotic, PT_Rabies, EndNote page ranges and model checkpoints all at
-  once — measured at only ~40% correct
-- `peri`, `nc` and `7d` refused for the same reason, each on evidence recorded
-  in the file's `_comment`
-
-**On a different collection those refusals are wrong.** `pt` may be unambiguous
-elsewhere; the olfactory terms may be dead weight. So on a new collection:
-
-- Read the `_comment` block first. Every refusal records the evidence that
-  produced it, which is what makes it safe to reverse.
-- Treat the domain sections as a starting point to prune, not a fixed schema.
-- Re-derive `ambiguous` against the new tree. A term refused on 40% precision
-  here may be perfectly clean there, and refusing it silently costs recall.
-- Bump `version` and describe the change in `_comment` — associations stamp
-  `vocab_version`, so the store stays interpretable across the edit.
-
-The `_comment` block is the vocabulary's changelog and its evidence. Never edit
-a term without adding to it; a refusal with no stated reason cannot be safely
-reversed later.
+**A site vocabulary does not transfer.** Its refusals are judgments about one
+collection: a term refused there for poor precision may be perfectly clean
+elsewhere, and refusing it silently costs recall. On a new collection, start
+from the example again, or re-derive every refusal against the new tree.

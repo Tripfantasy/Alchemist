@@ -18,8 +18,8 @@ Then read `.claude/commands/forage.md` for the standing collection context
 2. **`resources/metadata.csv` covers sequencing requests only.**
    Proteomics, EM, imaging, behavior and ephys are invisible to it. Absence from
    the CSV is not absence from the collection — check the association store in
-   `knowledge/` before declaring any gap. A previous report got this wrong and
-   missed an entire APEX Aβ40/Aβ42 proteomics dataset.
+   `knowledge/` before declaring any gap. Getting this wrong misses whole
+   datasets in directories the CSV never indexed.
 3. **Never launder a guess into a fact.** Every claim carries a tier: `csv`
    (matched a request record), `inferred` (read off a path), or `unknown` (too
    vague — recorded, never reported as understood). Mark inferred entries plainly.

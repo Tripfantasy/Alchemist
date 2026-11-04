@@ -167,7 +167,7 @@ def walk(
 def load_type_groups(names: List[str]) -> Optional[Set[str]]:
     if not names:
         return None
-    vocab = json.loads((ROOT / "resources" / "vocab.json").read_text())
+    vocab = json.loads(kb.resource("vocab.json").read_text())
     groups = vocab["type_groups"]
     exts: Set[str] = set()
     for n in names:

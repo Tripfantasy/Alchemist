@@ -31,6 +31,17 @@ forage/resources/metadata.csv
 # research portfolio. project_codes.example.json ships instead.
 forage/resources/project_codes.json
 
+# A site's vocabulary is grown from its own metadata and folder names, and its
+# refusal evidence describes that site's collection. vocab.example.json ships.
+forage/resources/vocab.json
+
+# The site's request-ID and project-code formats. site.example.json ships.
+forage/resources/site.json
+
+# Per-site notes for an agent: collection facts, local lessons, past runs.
+# Claude Code loads CLAUDE.local.md beside CLAUDE.md automatically.
+**/CLAUDE.local.md
+
 
 # NOTE ON THE **/ PREFIX BELOW
 # A pattern containing a slash is anchored to this file's directory, so a bare

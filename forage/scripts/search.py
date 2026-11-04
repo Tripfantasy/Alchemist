@@ -13,7 +13,7 @@ gap analysis.
 
 Usage
 -----
-  python3 scripts/search.py "APOE4 organoid gene regulatory networks" \
+  python3 scripts/search.py "cardiomyocyte regeneration single-cell" \
       --types omics,tabular --folder /projects/yu/ --limit 40
 """
 
@@ -59,8 +59,8 @@ FIELD_WEIGHTS = {
 def query_tokens(text: str, vocab: Vocab) -> Set[str]:
     """Tokenize the goal and expand it with vocabulary synonyms.
 
-    A goal that says "olfactory epithelium" should also match a path that only
-    says "OE", so expansion runs in both directions.
+    A goal that says "left ventricle" should also match a path that only
+    says "LV", so expansion runs in both directions.
     """
     words = {
         w for w in re.findall(r"[a-z0-9][a-z0-9\-]{1,}", text.lower())
@@ -150,14 +150,14 @@ def main() -> None:
                     help="restrict to paths under this prefix; repeatable")
     ap.add_argument("--limit", type=int, default=40, help="max candidates")
     ap.add_argument("--per-request", type=int, default=5,
-                    help="max files shown per MOLNG request, so one large "
+                    help="max files shown per request, so one large "
                          "request cannot crowd out the rest")
     ap.add_argument("--min-score", type=float, default=0.5)
     ap.add_argument("--include-unknown", action="store_true")
     ap.add_argument("--out", default="", help="write JSON here instead of stdout")
     args = ap.parse_args()
 
-    vocab_raw = json.loads((ROOT / "resources" / "vocab.json").read_text())
+    vocab_raw = json.loads(kb.resource("vocab.json").read_text())
     vocab = Vocab(vocab_raw)
     exts = load_type_filter(args.types, vocab_raw)
     tiers = {"csv", "inferred"} | ({"unknown"} if args.include_unknown else set())

@@ -3,10 +3,10 @@
 Builds a fake collection tree from the metadata CSV, deliberately reproducing
 the conditions the agent must survive:
 
-  - paths are RE-ROOTED (/lab_data/... not /n/analysis/<lab>/...), so anything
+  - paths are RE-ROOTED (/lab_data/... not /core/analysis/<lab>/...), so anything
     that matched on full paths would break here and only token matching works
   - some requests get no files at all, exercising the "indexed but absent" gap
-  - some folders carry no MOLNG id, exercising vocabulary inference
+  - some folders carry no request ID, exercising vocabulary inference
   - some folders are deliberately vague ("new_data/final2"), which must land in
     the 'unknown' tier rather than being over-interpreted
 
@@ -28,13 +28,8 @@ import kb  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Real metadata if present, else the synthetic example. metadata.csv
-# carries named requesters and internal paths, so it is gitignored and never
-# ships; metadata_example.csv has the same 35 columns with synthetic rows, so a
-# fresh clone can build the mock tree without it.
-METADATA_CSV = ROOT / "resources" / "metadata.csv"
-if not METADATA_CSV.exists():
-    METADATA_CSV = ROOT / "resources" / "metadata_example.csv"
+# Real metadata if present, else the synthetic example (see kb.resource).
+METADATA_CSV = kb.resource("metadata.csv")
 
 FASTQ_PER_RUN = ["_S1_L001_R1_001.fastq.gz", "_S1_L001_R2_001.fastq.gz"]
 TENX_OUTPUT = [
@@ -46,16 +41,16 @@ TENX_OUTPUT = [
 ]
 BULK_OUTPUT = ["counts/gene_counts.tsv", "qc/multiqc_report.html", "align/sample.bam"]
 
-# Folders with real biological meaning but no MOLNG anchor -> inference tier.
+# Folders with real biological meaning but no request-ID anchor -> inference tier.
 INFERENCE_TREE = [
-    ("/lab_data/reanalysis/sc_OE_h19/", ["analysis.rmd", "seurat_obj.rds",
+    ("/lab_data/reanalysis/sc_LV_d14_mi/", ["analysis.rmd", "seurat_obj.rds",
                                        "deg_table.csv", "umap.pdf"]),
-    ("/lab_data/reanalysis/snRNA_VNO_adult_wt/", ["integrated.h5ad", "markers.tsv"]),
-    ("/lab_data/reanalysis/slideseq_OB_p7_development/", ["puck_matrix.mtx.gz",
+    ("/lab_data/reanalysis/snRNA_liver_adult_wt/", ["integrated.h5ad", "markers.tsv"]),
+    ("/lab_data/reanalysis/slideseq_lung_p7_development/", ["array_matrix.mtx.gz",
                                                         "spatial_coords.csv"]),
-    ("/lab_data/reanalysis/apoe4_vs_apoe3_organoid_multiome/", ["grn_edges.tsv",
+    ("/lab_data/reanalysis/myh7_ko_vs_wt_cardiomyocyte_multiome/", ["grn_edges.tsv",
                                                               "atac_peaks.bed"]),
-    ("/lab_data/imaging/xenium_MOE_criticalperiod_p12/", ["cells.zarr",
+    ("/lab_data/imaging/xenium_kidney_injury_d3/", ["cells.zarr",
                                                         "transcripts.parquet"]),
     ("/lab_data/reference/mm10/", ["genome.fa", "genes.gtf"]),
 ]
@@ -70,7 +65,7 @@ VAGUE_TREE = [
 
 def load_rows():
     with METADATA_CSV.open(newline="", encoding="utf-8-sig") as fh:
-        return [r for r in csv.DictReader(fh) if (r.get("Request #") or "").strip()]
+        return [r for r in csv.DictReader(fh) if (r.get(kb.REQUEST_COLUMN) or "").strip()]
 
 
 def main() -> None:
@@ -117,7 +112,7 @@ def main() -> None:
 
     skipped = []
     for row in rows:
-        rid = row["Request #"].strip().upper()
+        rid = row[kb.REQUEST_COLUMN].strip().upper()
         raw_paths = (row.get("Flowcell Result Paths") or "").strip()
         if not raw_paths:
             skipped.append((rid, "no path in csv"))
@@ -133,7 +128,7 @@ def main() -> None:
                 continue
             flowcell = segs[-1]
             user = segs[-3] if len(segs) >= 3 else "unknown"
-            # RE-ROOTED: the /n/analysis prefix is gone, as after a real transfer
+            # RE-ROOTED: the /core/analysis prefix is gone, as after a real transfer
             base = "/lab_data/sequencing/{}/{}/{}/".format(user, rid, flowcell)
 
             for suffix in FASTQ_PER_RUN:
