@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Opt-in bias reporting across the three Alchemist agents.
+"""Opt-in bias reporting across the Alchemist agents.
 
 Records what influenced a run OTHER than the request and that run's clarifying
 answers -- the standing user profile, prior outputs, the knowledge store, the
 vocabulary, earlier turns. See bias/README.md for what counts and why.
 
 Deliberately dependency-free and stdlib-only: every agent has its own venv, and
-this is the one thing all three share. Run it with any python3.
+this is the one thing they all share. Run it with any python3.
 
   python3 bias/report.py status
   python3 bias/report.py enable | disable
@@ -34,7 +34,7 @@ CONFIG = HERE / "config.json"
 CONFIG_LOCAL = HERE / "config.local.json"
 LOG = HERE / "log.jsonl"
 
-AGENTS = ("distill", "brew", "forage")
+AGENTS = ("distill", "brew", "forage", "sigil")
 
 # Kept open on purpose: an unrecognised source is recorded with a warning
 # rather than rejected. A refused record is a record that does not exist, and

@@ -38,6 +38,9 @@ forage/resources/vocab.json
 # The site's request-ID and project-code formats. site.example.json ships.
 forage/resources/site.json
 
+# The lab's own description of itself, written on sigil's first run.
+sigil/resources/lab.json
+
 # Per-site notes for an agent: collection facts, local lessons, past runs.
 # Claude Code loads CLAUDE.local.md beside CLAUDE.md automatically.
 **/CLAUDE.local.md
@@ -73,6 +76,12 @@ forage/resources/site.json
 !brew/output/EXAMPLE_protocol.pdf
 !forage/output/EXAMPLE_discovery_report.md
 !forage/output/EXAMPLE_discovery_report.pdf
+!sigil/output/EXAMPLE_lab_profile.md
+!sigil/output/EXAMPLE_lab_profile.pdf
+!sigil/output/EXAMPLE_lab_profile_collab.md
+!sigil/output/EXAMPLE_lab_profile_collab.pdf
+!sigil/output/EXAMPLE_dashboard.html
+!sigil/output/EXAMPLE_dashboard_collab.html
 
 
 # --- forage: knowledge stores ------------------------------------------

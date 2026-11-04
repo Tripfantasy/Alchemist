@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-AGENTS = ("distill", "brew", "forage")
+AGENTS = ("distill", "brew", "forage", "sigil")
 ROOT_SETTINGS = ROOT / ".claude" / "settings.json"
 
 

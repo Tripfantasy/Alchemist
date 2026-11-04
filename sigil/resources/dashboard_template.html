@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+/* Tokens from the data-viz reference palette (validated in both modes).
+   Sequential: one blue ramp. Categorical (word cloud): slots 1-3, the set
+   that clears every all-pairs check; slot 3 is under 3:1 on light, so the
+   table view below the cloud is the required relief.
+   Each section takes its word-cloud group's hue: Methods orange (with an
+   orange ramp generated in OKLCH at the palette orange's hue, matched step
+   for step to the blue ramp's lightness, validated both modes), Biology
+   blue, Models & tools aqua. The folder map uses slots 1-7 in fixed order. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f0efec;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --ring: rgba(11,11,11,0.10);
+  --bar: #2a78d6;
+  --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+  --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --other: #c3c2b7;
+  --hl: #eb6834;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #262624;
+    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+    --bar: #3987e5;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --other: #52514e;
+    --hl: #d95926;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #262624;
+  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --ring: rgba(255,255,255,0.10);
+  --bar: #3987e5;
+  --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+  --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --other: #52514e;
+  --hl: #d95926;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
+header { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+header h1 { font-size: 30px; margin: 0; letter-spacing: -0.01em; }
+.edition { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-2); margin-top: 2px; }
+.desc { font-size: 17px; line-height: 1.55; color: var(--ink); max-width: 68ch; margin: 14px 0 0; }
+.banner { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px;
+  padding: 10px 14px; margin: 16px 0 0; color: var(--ink-2); font-size: 14px; }
+.switch { display: inline-flex; align-items: center; gap: 10px; font: inherit; font-size: 14px;
+  color: var(--ink-2); background: none; border: 0; cursor: pointer; padding: 4px; }
+.switch .track { width: 40px; height: 22px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--ring); position: relative; transition: background .2s; }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--ink-2); transition: transform .2s, background .2s; }
+.switch[aria-checked="true"] .track { background: var(--bar); }
+.switch[aria-checked="true"] .knob { transform: translateX(18px); background: #ffffff; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 24px 0 28px; }
+.kpi { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; padding: 14px 16px; }
+.kpi .v { font-size: 30px; font-weight: 600; line-height: 1.1; }
+.kpi .l { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+section.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 14px;
+  padding: 20px 20px 16px; margin: 0 0 20px; }
+section.card h2 { font-size: 19px; margin: 0 0 2px; }
+.how { color: var(--ink-2); font-size: 14px; margin: 4px 0 14px; max-width: 72ch; }
+.cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+h3 { font-size: 14px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; }
+
+/* word cloud */
+.cloudwrap { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; }
+@media (max-width: 760px) { .cloudwrap { grid-template-columns: 1fr; } }
+.cloud { position: relative; min-height: 300px; }
+.cloud .w { position: absolute; background: none; border: 0; padding: 0 2px; margin: 0; cursor: pointer;
+  font-family: inherit; font-weight: 600; line-height: 1; white-space: nowrap; border-radius: 6px;
+  color: var(--c); opacity: 0; transform: scale(.6); transition: opacity .45s ease, transform .45s ease; }
+.cloud .w.in { opacity: 1; transform: scale(1); }
+.cloud .w.in:hover { transform: scale(1.08); }
+.cloud .w.off { opacity: .12; }
+.cloud .w.sel { outline: 2px solid var(--c); outline-offset: 3px; }
+.panel { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; font-size: 14px; align-self: start; }
+.panel .pt { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
+.panel .pc { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.panel ul { margin: 6px 0 0; padding-left: 18px; }
+.panel .mini { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--ring); border-radius: 8px; padding: 0 8px; margin: 2px 0; cursor: pointer; }
+.panel .clear { margin-top: 12px; font: inherit; font-size: 13px; color: var(--ink-2); background: var(--surface);
+  border: 1px solid var(--ring); border-radius: 8px; padding: 3px 10px; cursor: pointer; }
+.cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.cat { font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px;
+  border-radius: 999px; border: 1px solid var(--ring); background: var(--surface); color: var(--ink); cursor: pointer; }
+.cat .sw { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.cat[aria-pressed="false"] { opacity: .45; }
+
+/* heatmap */
+.hm { display: grid; gap: 2px; font-size: 13px; overflow-x: auto; }
+.hm .ch { color: var(--ink-2); font-size: 12px; line-height: 1.2; padding: 0 2px 6px; align-self: end;
+  white-space: pre-line; overflow-wrap: break-word; min-width: 0; border-radius: 4px; }
+.hm .rh { color: var(--ink); padding: 0 10px 0 4px; align-self: center; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-radius: 4px; }
+.hm .c { min-height: 34px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  font-variant-numeric: tabular-nums; font-size: 12px; outline-offset: 1px; }
+.hm .c.z { background: var(--surface-2); }
+.hm .tot { color: var(--muted); font-size: 12px; align-self: center; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; color: var(--ink-2); font-size: 12px; margin: 10px 0 0; }
+.ramp { display: inline-flex; gap: 2px; margin: 0 6px; vertical-align: -2px; }
+.ramp i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
+
+/* bars */
+.bars { display: grid; grid-template-columns: minmax(110px, max-content) 1fr; gap: 6px 12px; font-size: 13px; }
+.bars .lab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: center; border-radius: 4px; padding: 0 4px; }
+.bars .lab small { color: var(--muted); margin-left: 6px; }
+.bars .track { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.bars .b { height: 14px; background: var(--c, var(--bar)); border-radius: 0 4px 4px 0; min-width: 2px; width: 0;
+  transition: width .7s cubic-bezier(.2,.8,.2,1); }
+.bars .n { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* cross-highlight from the word cloud */
+.hl { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--hl); font-weight: 600; }
+.chip.hl { box-shadow: inset 0 0 0 2px var(--hl); }
+
+/* publications */
+.pubs { list-style: none; margin: 0; padding: 0; }
+.pubs li { padding: 12px 0; border-bottom: 1px solid var(--grid); display: grid; grid-template-columns: 64px 1fr; gap: 12px; }
+.pubs li:last-child { border-bottom: 0; }
+.pubs .yr { font-size: 22px; font-weight: 600; color: var(--ink-2); line-height: 1.1; }
+.pubs a { color: var(--ink); font-weight: 600; text-decoration: none; }
+.pubs a:hover { color: var(--bar); text-decoration: underline; }
+.pubs .meta { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.pubs .meta b { color: var(--ink); font-weight: 600; }
+.pubs .type { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 1px 7px;
+  border-radius: 999px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; vertical-align: 1px; }
+
+/* exploration */
+.seg-toggle { display: inline-flex; border: 1px solid var(--ring); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.seg-toggle button { font: inherit; font-size: 13px; padding: 3px 12px; border: 0; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.seg-toggle button[aria-pressed="true"] { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+.toplist .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+.growth .line { fill: none; stroke-width: 2; }
+.growth .area { opacity: .16; }
+.growth .xh { stroke: var(--muted); stroke-width: 1; }
+.growth .grid { stroke: var(--grid); }
+
+.xstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 0 0 16px; }
+.xstat { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+.xstat .v { font-size: 22px; font-weight: 600; }
+.xstat .l { color: var(--ink-2); font-size: 12px; }
+.sunwrap { display: grid; grid-template-columns: minmax(0, 480px) 1fr; gap: 24px; align-items: start; }
+@media (max-width: 760px) { .sunwrap { grid-template-columns: 1fr; } }
+.crumbs { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; min-height: 20px; word-break: break-all; }
+.crumbs button { font: inherit; color: var(--bar); background: none; border: 0; padding: 0; cursor: pointer; }
+svg.sun path { cursor: pointer; stroke: var(--surface); stroke-width: 1.5; }
+svg.sun path:hover { opacity: .78; }
+svg.sun .fade { animation: fade .35s ease; }
+@keyframes fade { from { opacity: 0; transform: scale(.96); transform-origin: center; } to { opacity: 1; transform: scale(1); } }
+svg text { fill: var(--ink); font-family: inherit; }
+.growth text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.toplist { font-size: 13px; }
+.toplist div { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--grid); }
+.toplist span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toplist span:last-child { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+details.tv { margin-top: 12px; font-size: 13px; }
+details.tv summary { color: var(--ink-2); cursor: pointer; }
+table { border-collapse: collapse; margin-top: 8px; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--surface-2); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+.chip b { font-weight: 600; margin-left: 4px; color: var(--ink-2); }
+.note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+#tip { position: fixed; pointer-events: none; z-index: 10; max-width: 360px; background: var(--surface);
+  color: var(--ink); border: 1px solid var(--ring); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); display: none; }
+#tip .t { font-weight: 600; margin-bottom: 2px; }
+#tip .d { color: var(--ink-2); }
+[tabindex]:focus-visible, button:focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; }
+footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
+@media (prefers-reduced-motion: reduce) {
+  .cloud .w, .bars .b, .switch .knob, .switch .track { transition: none; }
+  svg.sun .fade { animation: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>__TITLE__</h1>
+      <div class="edition" id="edition"></div>
+    </div>
+    <button class="switch" id="dark" type="button" role="switch" aria-checked="false">
+      <span>Dark mode</span><span class="track"><span class="knob"></span></span>
+    </button>
+  </header>
+  <p class="desc" id="desc" hidden></p>
+  <div class="banner" id="banner" hidden></div>
+  <div class="kpis" id="kpis"></div>
+
+  <section class="card">
+    <h2>The lab at a glance</h2>
+    <p class="how">The words that come up most across the lab's work. Bigger means more projects. Click a word to see what it goes with and to highlight it in the charts below; click a group to hide or show it.</p>
+    <div class="cats" id="cats"></div>
+    <div class="cloudwrap"><div class="cloud" id="cloud"></div><div class="panel" id="panel"></div></div>
+    <div id="cloud-tv"></div>
+  </section>
+
+  <section class="card">
+    <h2>Research themes and how they are approached</h2>
+    <p class="how">The lab's research themes, and the sequencing approaches used for each. Darker cells mean more projects. Hover a cell for details.</p>
+    <div id="v-themes"></div>
+  </section>
+
+  <section class="card">
+    <h2>Methods beyond sequencing</h2>
+    <p class="how">Imaging, physiology, behavior and the other techniques the lab uses, by number of projects.</p>
+    <div id="v-methods"></div>
+  </section>
+
+  <section class="card">
+    <h2>Biological focus</h2>
+    <p class="how">Which tissues the lab studies, at which developmental stages or timepoints, and under which conditions.</p>
+    <div class="cols2"><div><h3>Tissue × stage or timepoint</h3><div id="v-focus"></div></div>
+      <div><h3>Conditions and models</h3><div id="v-cond"></div><h3 style="margin-top:16px">Organisms</h3><div id="v-species"></div></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Toolkit</h2>
+    <p class="how">The genetic tools the lab works with, and the languages its analyses are written in.</p>
+    <div class="cols2"><div><h3>Genetic tools</h3><div id="v-tools"></div></div>
+      <div><h3>Analysis languages</h3><div id="v-lang"></div></div></div>
+  </section>
+
+  <section class="card" id="pubcard" hidden>
+    <h2>Recent publications</h2>
+    <p class="how" id="pubhow"></p>
+    <ol class="pubs" id="pubs"></ol>
+  </section>
+
+  <section class="card" id="explore" hidden>
+    <h2>Exploration</h2>
+    <p class="how">forage is the lab's data-discovery assistant. It walks the lab's data collection, catalogues every file it finds, and answers questions like "do we already have data on this?" before anyone plans a new experiment. This section shows how much of the collection it has explored, how the lab's data is spread across folders, and how that progress has grown as people asked it questions.</p>
+    <div class="xstats" id="xstats"></div>
+    <div class="sunwrap"><div>
+        <div class="seg-toggle" role="group" aria-label="Size folders by"><button type="button" id="by-files" aria-pressed="true">Files</button><button type="button" id="by-bytes" aria-pressed="false">Storage</button></div>
+        <div class="crumbs" id="crumbs"></div><div id="sun"></div></div>
+      <div><h3 id="toptitle">Largest folders here</h3><div class="toplist" id="toplist"></div>
+        <p class="note">Click a ring to zoom into a folder, the centre to zoom back out. Each top-level folder keeps its colour as you zoom.</p></div></div>
+    <h3 style="margin-top:24px">Progress over time</h3>
+    <div id="growth"></div>
+    <div id="explore-tv"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</main>
+<div id="tip" role="tooltip"></div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+  var D = JSON.parse(document.getElementById("data").textContent);
+  var COLLAB = "__AUDIENCE__" === "collaborator";
+  var ORANGE = ["#fed5c7","#febfa9","#ffa98a","#fe9068","#fb7744","#eb6834","#da5821","#c94908","#b43f01","#9e3601","#892f02","#752601","#5e2208"];
+  var RAMP = ["#cde2fb","#b7d3f6","#9ec5f4","#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95","#104281","#0d366b"];
+  var CATS = [["Biology", "--cat-1"], ["Methods", "--cat-2"], ["Models & tools", "--cat-3"]];
+  var CATVAR = {}; CATS.forEach(function (c) { CATVAR[c[0]] = c[1]; });
+  var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var selected = null, hiddenCats = {};
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function fmt(n) { return Number(n).toLocaleString(); }
+  function pct(x) { return Math.round(x * 100) + "%"; }
+  function dark() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t) return t === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+  function steps(r) { r = r || RAMP; return dark() ? r.slice().reverse() : r; }
+
+  // ---- tooltip (hover and keyboard focus)
+  var tip = document.getElementById("tip");
+  function showTip(x, y, title, detail) {
+    tip.innerHTML = ""; tip.appendChild(el("div", "t", title));
+    (Array.isArray(detail) ? detail : [detail]).forEach(function (d) { if (d) tip.appendChild(el("div", "d", d)); });
+    tip.style.display = "block";
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, window.innerWidth - w - 8) + "px";
+    tip.style.top = Math.min(y + 14, window.innerHeight - h - 8) + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  function bindTip(node, title, detail) {
+    if (!node.hasAttribute("tabindex") && node.tagName !== "BUTTON") node.tabIndex = 0;
+    node.addEventListener("mousemove", function (e) { showTip(e.clientX, e.clientY, title, detail); });
+    node.addEventListener("mouseleave", hideTip);
+    node.addEventListener("focus", function () { var r = node.getBoundingClientRect(); showTip(r.right, r.top, title, detail); });
+    node.addEventListener("blur", hideTip);
+  }
+
+  function tableView(host, head, rows, numCols, label) {
+    var d = el("details", "tv"); d.appendChild(el("summary", null, label || "Table view"));
+    var t = el("table"), tr = el("tr");
+    head.forEach(function (h, i) { tr.appendChild(el("th", numCols.indexOf(i) >= 0 ? "num" : null, h)); });
+    t.appendChild(tr);
+    rows.forEach(function (r) {
+      var row = el("tr");
+      r.forEach(function (c, i) { row.appendChild(el("td", numCols.indexOf(i) >= 0 ? "num" : null, c)); });
+      t.appendChild(row);
+    });
+    d.appendChild(t); host.appendChild(d);
+  }
+
+  function rampColor(v, max, ramp) {
+    if (!v) return null;
+    var s = steps(ramp);
+    var i = Math.max(1, Math.min(s.length - 1, Math.round(Math.sqrt(v / max) * (s.length - 1))));
+    var lightCell = dark() ? i >= 9 : i <= 5;
+    return { bg: s[i], ink: lightCell ? "#0b0b0b" : "#ffffff" };
+  }
+
+  // ---- header and KPIs
+  document.getElementById("edition").textContent = COLLAB ? "Overview for collaborators" : "Lab overview";
+  if (D.lab && D.lab.description) { var de = document.getElementById("desc"); de.textContent = D.lab.description; de.hidden = false; }
+  if (D.synthetic) {
+    var bn = document.getElementById("banner"); bn.hidden = false;
+    bn.textContent = "Synthetic example, built from forage's mock collection. The lab, its files and its projects are fabricated.";
+  }
+  var k = D.kpis, kp = document.getElementById("kpis");
+  [[k.themes, "research themes"], [k.requests, "sequencing projects"], [k.project_folders, "project folders of data"],
+   [k.methods, "methods in use"]].concat(COLLAB ? [] : [[k.files, "files catalogued"]]).forEach(function (x) {
+    var c = el("div", "kpi"); c.appendChild(el("div", "v", fmt(x[0]))); c.appendChild(el("div", "l", x[1])); kp.appendChild(c);
+  });
+
+  // ---- cross-highlight
+  function applySelection() {
+    var nodes = document.querySelectorAll("[data-term]");
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.toggle("hl", !!selected && nodes[i].getAttribute("data-term") === selected);
+    var ws = document.querySelectorAll(".cloud .w");
+    for (var j = 0; j < ws.length; j++) ws[j].classList.toggle("sel", ws[j].getAttribute("data-t") === selected);
+  }
+
+  // ---- word cloud
+  var cloudHost = document.getElementById("cloud"), panel = document.getElementById("panel");
+  var byTerm = {}; D.cloud.forEach(function (w) { byTerm[w.t] = w; });
+  function renderPanel() {
+    panel.innerHTML = "";
+    var w = selected && byTerm[selected];
+    if (!w) {
+      panel.appendChild(el("div", "pt", "Pick a word"));
+      panel.appendChild(el("div", null, D.cloud.length ? "Each word links to the projects that mention it. The most common are " +
+        D.cloud.slice(0, 3).map(function (x) { return x.t; }).join(", ") + "." : "No words yet."));
+      return;
+    }
+    var cat = el("div", "pc", w.cat); cat.style.color = "var(" + CATVAR[w.cat] + ")";
+    panel.appendChild(cat); panel.appendChild(el("div", "pt", w.t));
+    panel.appendChild(el("div", null, fmt(w.n) + " project folder" + (w.n === 1 ? "" : "s")));
+    if (w["with"].length) {
+      var lab = el("div", null, "Often together with:"); lab.style.marginTop = "8px"; panel.appendChild(lab);
+      var ul = el("ul");
+      w["with"].forEach(function (x) {
+        var li = el("li");
+        if (byTerm[x]) { var b = el("button", "mini", x); b.type = "button"; b.addEventListener("click", function () { select(x); }); li.appendChild(b); }
+        else li.textContent = x;
+        ul.appendChild(li);
+      });
+      panel.appendChild(ul);
+    }
+    if (!COLLAB && w.eg && w.eg.length) {
+      var lab2 = el("div", null, "For example:"); lab2.style.marginTop = "8px"; panel.appendChild(lab2);
+      var ul2 = el("ul");
+      w.eg.forEach(function (p) { var li = el("li", null, p); li.style.wordBreak = "break-all"; li.style.fontSize = "12px"; ul2.appendChild(li); });
+      panel.appendChild(ul2);
+    }
+    var c = el("button", "clear", "Clear selection"); c.type = "button"; c.addEventListener("click", function () { select(null); });
+    panel.appendChild(c);
+  }
+  function select(t) { selected = (t === selected ? null : t); renderPanel(); applySelection(); }
+
+  var cats = document.getElementById("cats");
+  CATS.forEach(function (c) {
+    var b = el("button", "cat"); b.type = "button"; b.setAttribute("aria-pressed", "true");
+    b.style.setProperty("--c", "var(" + c[1] + ")");
+    b.appendChild(el("span", "sw")); b.appendChild(document.createTextNode(c[0]));
+    b.addEventListener("click", function () {
+      hiddenCats[c[0]] = !hiddenCats[c[0]]; b.setAttribute("aria-pressed", hiddenCats[c[0]] ? "false" : "true");
+      var ws = document.querySelectorAll(".cloud .w");
+      for (var i = 0; i < ws.length; i++) ws[i].classList.toggle("off", !!hiddenCats[ws[i].getAttribute("data-cat")]);
+    });
+    cats.appendChild(b);
+  });
+
+  function layoutCloud() {
+    cloudHost.innerHTML = "";
+    var W = cloudHost.clientWidth || 600, H = Math.max(280, Math.min(420, Math.round(W * 0.55)));
+    cloudHost.style.height = H + "px";
+    if (!D.cloud.length) { cloudHost.appendChild(el("p", "note", "Nothing in the collection describes the lab's work yet.")); return; }
+    var ctx = document.createElement("canvas").getContext("2d");
+    var max = D.cloud[0].n, min = D.cloud[D.cloud.length - 1].n, placed = [], cx = W / 2, cy = H / 2;
+    var family = getComputedStyle(document.body).fontFamily;
+    D.cloud.forEach(function (w, i) {
+      var r = max === min ? 1 : (w.n - min) / (max - min);
+      var size = Math.round(13 + Math.sqrt(r) * (W < 500 ? 24 : 36));
+      ctx.font = "600 " + size + "px " + family;
+      var bw = ctx.measureText(w.t).width + 8, bh = size * 1.15;
+      for (var t = 0; t < 1200; t += 0.3) {
+        var x = cx + 1.5 * t * Math.cos(t) * (W / H) * 0.9 - bw / 2;
+        var y = cy + 1.5 * t * Math.sin(t) - bh / 2;
+        if (x < 0 || y < 0 || x + bw > W || y + bh > H) continue;
+        var hit = false;
+        for (var p = 0; p < placed.length; p++) {
+          var q = placed[p];
+          if (x < q.x + q.w && x + bw > q.x && y < q.y + q.h && y + bh > q.y) { hit = true; break; }
+        }
+        if (hit) continue;
+        placed.push({ x: x, y: y, w: bw, h: bh });
+        var b = el("button", "w", w.t); b.type = "button";
+        b.setAttribute("data-t", w.t); b.setAttribute("data-cat", w.cat);
+        b.style.left = x + "px"; b.style.top = y + "px"; b.style.fontSize = size + "px";
+        b.style.setProperty("--c", "var(" + CATVAR[w.cat] + ")");
+        if (hiddenCats[w.cat]) b.classList.add("off");
+        bindTip(b, w.t, [w.cat, fmt(w.n) + " project folder" + (w.n === 1 ? "" : "s")]);
+        b.addEventListener("click", function () { select(w.t); });
+        cloudHost.appendChild(b);
+        if (REDUCED) b.classList.add("in");
+        else (function (node, delay) { setTimeout(function () { node.classList.add("in"); }, delay); })(b, 30 + i * 18);
+        break;
+      }
+    });
+    applySelection();
+  }
+  tableView(document.getElementById("cloud-tv"), ["Word", "Group", "Project folders", "Often together with"],
+    D.cloud.map(function (w) { return [w.t, w.cat, fmt(w.n), w["with"].join(", ")]; }), [2]);
+
+  // ---- generic charts
+  function heatmap(host, rows, cols, value, rowTotal, tipFor, colLabel, ramp) {
+    host.innerHTML = "";
+    var max = 1;
+    rows.forEach(function (r) { cols.forEach(function (c) { max = Math.max(max, value(r, c)); }); });
+    var g = el("div", "hm");
+    g.style.gridTemplateColumns = "minmax(120px, 220px) repeat(" + cols.length + ", minmax(68px, 1fr))" + (rowTotal ? " max-content" : "");
+    g.appendChild(el("div"));
+    cols.forEach(function (c) { var h = el("div", "ch", colLabel ? colLabel(c) : c); h.setAttribute("data-term", c); g.appendChild(h); });
+    if (rowTotal) g.appendChild(el("div", "ch", "Total"));
+    rows.forEach(function (r) {
+      var rh = el("div", "rh", r); rh.title = r; rh.setAttribute("data-term", r);
+      if (byTerm[r]) { rh.style.cursor = "pointer"; rh.addEventListener("click", function () { select(r); }); }
+      g.appendChild(rh);
+      cols.forEach(function (c) {
+        var v = value(r, c), cell = el("div", "c" + (v ? "" : " z"));
+        var col = rampColor(v, max, ramp);
+        if (col) { cell.style.background = col.bg; cell.style.color = col.ink; cell.textContent = fmt(v); }
+        var t = tipFor(r, c, v); bindTip(cell, t[0], t[1]);
+        g.appendChild(cell);
+      });
+      if (rowTotal) g.appendChild(el("div", "tot", fmt(rowTotal(r))));
+    });
+    host.appendChild(g);
+    var lg = el("div", "legend"), rampEl = el("span", "ramp");
+    steps(ramp).filter(function (_, i) { return i % 3 === 1; }).forEach(function (c) { var s = el("i"); s.style.background = c; rampEl.appendChild(s); });
+    lg.appendChild(el("span", null, "fewer")); lg.appendChild(rampEl); lg.appendChild(el("span", null, "more"));
+    host.appendChild(lg);
+  }
+
+  function bars(host, items, unitLabel, color) {
+    host.innerHTML = "";
+    if (!items.length) { host.appendChild(el("p", "note", "None found yet.")); return; }
+    var max = Math.max.apply(null, items.map(function (x) { return x.value; }));
+    var g = el("div", "bars"), grow = [];
+    if (color) g.style.setProperty("--c", "var(" + color + ")");
+    items.forEach(function (x) {
+      var lab = el("div", "lab", x.label); lab.setAttribute("data-term", x.label);
+      if (x.sub) lab.appendChild(el("small", null, x.sub));
+      lab.title = x.label;
+      if (byTerm[x.label]) { lab.style.cursor = "pointer"; lab.addEventListener("click", function () { select(x.label); }); }
+      var tr = el("div", "track"), b = el("div", "b");
+      grow.push([b, Math.max(1, (x.value / max) * 82) + "%"]);
+      tr.appendChild(b); tr.appendChild(el("span", "n", fmt(x.value)));
+      bindTip(tr, x.label, [fmt(x.value) + " " + unitLabel].concat(x.detail || []));
+      g.appendChild(lab); g.appendChild(tr);
+    });
+    host.appendChild(g);
+    var go = function () { grow.forEach(function (p) { p[0].style.width = p[1]; }); };
+    if (REDUCED) go(); else requestAnimationFrame(function () { requestAnimationFrame(go); });
+  }
+
+  // ---- exploration: folder map + growth chart (internal edition only)
+  var X = D.exploration, sunPath = [], sizeBy = "f";
+  var SLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7"];
+  function svgEl(tag, attrs) { var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var a in attrs) e.setAttribute(a, attrs[a]); return e; }
+  function bytes(b) { var u = ["B", "KB", "MB", "GB", "TB", "PB"], i = 0; while (b >= 1000 && i < u.length - 1) { b /= 1000; i++; } return (i ? b.toFixed(b < 10 ? 1 : 0) : b) + " " + u[i]; }
+  function size(n) { return sizeBy === "f" ? n.f : (n.b || 0); }
+  function sizeLabel(n) { return sizeBy === "f" ? fmt(n.f) + " files" : bytes(n.b || 0); }
+  function arc(cx, cy, r0, r1, a0, a1) {
+    if (a1 - a0 >= 2 * Math.PI - 1e-6) a1 = a0 + 2 * Math.PI - 1e-4;
+    var big = a1 - a0 > Math.PI ? 1 : 0;
+    function p(r, a) { return (cx + r * Math.sin(a)).toFixed(2) + "," + (cy - r * Math.cos(a)).toFixed(2); }
+    return "M" + p(r1, a0) + "A" + r1 + "," + r1 + " 0 " + big + " 1 " + p(r1, a1) +
+      "L" + p(r0, a1) + "A" + r0 + "," + r0 + " 0 " + big + " 0 " + p(r0, a0) + "Z";
+  }
+  // Colour follows the top-level folder's identity, never its rank in the current view.
+  var topColor = {};
+  ((X && X.tree.c) || []).forEach(function (ch, i) { topColor[i] = ch.more || i >= SLOTS.length ? "var(--other)" : "var(" + SLOTS[i] + ")"; });
+  function nodeAt(path) { var n = X.tree; path.forEach(function (i) { n = n.c[i]; }); return n; }
+  function renderSun() {
+    var host = document.getElementById("sun"); host.innerHTML = "";
+    var node = nodeAt(sunPath);
+    var S = Math.min(480, host.clientWidth || 480), c = S / 2, r0 = S * 0.17, ring = (c - r0 - 4) / 3;
+    var svg = svgEl("svg", { "class": "sun", width: S, height: S, viewBox: "0 0 " + S + " " + S, role: "img",
+      "aria-label": "Map of the data collection by folder" });
+    var g = svgEl("g", { "class": "fade" }); svg.appendChild(g);
+    function draw(n, depth, a0, a1, idxPath) {
+      if (!n.c || depth > 3) return;
+      var a = a0, total = size(n) || 1;
+      n.c.forEach(function (ch, i) {
+        var span = (a1 - a0) * size(ch) / total;
+        var full = idxPath.concat([i]);
+        if (span > 0.006) {
+          var color = ch.more ? "var(--other)" : topColor[full[0]];
+          var path = svgEl("path", { d: arc(c, c, r0 + (depth - 1) * ring, r0 + depth * ring, a, a + span), fill: color,
+            "fill-opacity": [1, 0.7, 0.45][Math.min(full.length - 1, 2)] });
+          path.addEventListener("mousemove", function (e) { showTip(e.clientX, e.clientY, ch.n,
+            [fmt(ch.f) + " files · " + bytes(ch.b || 0), ch.more ? "smaller folders, grouped" : (ch.c ? "Click to zoom in" : "")]); });
+          path.addEventListener("mouseleave", hideTip);
+          if (ch.c && !ch.more) path.addEventListener("click", function () { hideTip(); sunPath = full; renderSun(); });
+          g.appendChild(path);
+          draw(ch, depth + 1, a, a + span, full);
+        }
+        a += span;
+      });
+    }
+    draw(node, 1, 0, 2 * Math.PI, sunPath.slice());
+    var center = svgEl("circle", { cx: c, cy: c, r: r0 - 2, fill: "var(--surface-2)", style: "cursor:" + (sunPath.length ? "pointer" : "default") });
+    center.addEventListener("click", function () { if (sunPath.length) { sunPath.pop(); renderSun(); } });
+    g.appendChild(center);
+    var t1 = svgEl("text", { x: c, y: c - 4, "text-anchor": "middle", "font-size": 13, "font-weight": 600, "pointer-events": "none" });
+    t1.textContent = node.n.length > 20 ? node.n.slice(0, 19) + "…" : node.n; g.appendChild(t1);
+    var t2 = svgEl("text", { x: c, y: c + 14, "text-anchor": "middle", "font-size": 12, style: "fill:var(--ink-2)", "pointer-events": "none" });
+    t2.textContent = sunPath.length ? "click to go back" : sizeLabel(node); g.appendChild(t2);
+    host.appendChild(svg);
+    var cr = document.getElementById("crumbs"); cr.innerHTML = "";
+    var trail = [[X.tree.n, []]], walk = X.tree;
+    sunPath.forEach(function (i, j) { walk = walk.c[i]; trail.push([walk.n, sunPath.slice(0, j + 1)]); });
+    trail.forEach(function (t, j) {
+      if (j) cr.appendChild(document.createTextNode(" / "));
+      if (j === trail.length - 1) cr.appendChild(el("span", null, t[0]));
+      else { var b = el("button", null, t[0]); b.type = "button"; b.addEventListener("click", function () { sunPath = t[1]; renderSun(); }); cr.appendChild(b); }
+    });
+    document.getElementById("toptitle").textContent = sunPath.length ? "Largest folders in " + node.n : "Largest top-level folders";
+    var tl = document.getElementById("toplist"); tl.innerHTML = "";
+    var kids = (node.c || []).map(function (ch, i) { return [ch, i]; }).sort(function (x, y) { return size(y[0]) - size(x[0]); });
+    kids.slice(0, 8).forEach(function (pair) {
+      var ch = pair[0], row = el("div"), nm = el("span"), sw = el("span", "sw");
+      sw.style.background = ch.more ? "var(--other)" : topColor[sunPath.length ? sunPath[0] : pair[1]];
+      nm.appendChild(sw); nm.appendChild(document.createTextNode(ch.n)); nm.title = ch.n; row.appendChild(nm);
+      row.appendChild(el("span", null, fmt(ch.f) + " files · " + bytes(ch.b || 0))); tl.appendChild(row); });
+  }
+  ["f", "b"].forEach(function (k) {
+    var btn = document.getElementById(k === "f" ? "by-files" : "by-bytes");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      sizeBy = k;
+      document.getElementById("by-files").setAttribute("aria-pressed", k === "f" ? "true" : "false");
+      document.getElementById("by-bytes").setAttribute("aria-pressed", k === "b" ? "true" : "false");
+      renderSun();
+    });
+  });
+
+  // Two small charts on one shared time axis -- never two y-scales on one plot.
+  function renderGrowth() {
+    var host = document.getElementById("growth"); host.innerHTML = "";
+    var G = X.growth || [];
+    if (!G.length) { host.appendChild(el("p", "note", "No history yet.")); return; }
+    var t0 = Date.parse(G[0].date), t1 = Date.parse(G[G.length - 1].date);
+    if (t1 - t0 < 14 * 864e5) { t0 -= 7 * 864e5; t1 += 7 * 864e5; }
+    var W = host.clientWidth || 800, L = 64, R = 16, PH = 92, GAP = 40, TOP = 22, H = TOP + PH * 2 + GAP + 26;
+    function xs(d) { return L + (Date.parse(d) - t0) / (t1 - t0) * (W - L - R); }
+    var svg = svgEl("svg", { "class": "growth", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": "Share of known folders explored, and questions answered, over time" });
+    var panels = [
+      { key: "explored", label: "Share of known folders explored", color: "var(--cat-7)", y0: TOP, max: 100,
+        fmt: function (v) { return Math.round(v) + "%"; } },
+      { key: "questions", label: "Questions answered", color: "var(--cat-2)", y0: TOP + PH + GAP,
+        fmt: function (v) { return String(v); } }
+    ];
+    panels.forEach(function (p) {
+      var max = p.max || Math.max(1, G[G.length - 1][p.key]);
+      function ys(v) { return p.y0 + PH - v / max * (PH - 6); }
+      [0, max].forEach(function (v) {
+        svg.appendChild(svgEl("line", { "class": "grid", x1: L, x2: W - R, y1: ys(v), y2: ys(v) }));
+        var t = svgEl("text", { x: L - 8, y: ys(v) + 4, "text-anchor": "end" }); t.textContent = p.fmt(v); svg.appendChild(t);
+      });
+      var lab = svgEl("text", { x: L, y: p.y0 - 8, style: "fill:var(--ink-2);font-weight:600;font-size:12px" }); lab.textContent = p.label;
+      svg.appendChild(lab);
+      // Stepped cumulative line: flat until the next event, then a step up.
+      var d = "M" + L + "," + ys(0), last = 0;
+      G.forEach(function (pt) { if (pt[p.key] == null) return; var nx = xs(pt.date); d += "L" + nx + "," + ys(last) + "L" + nx + "," + ys(pt[p.key]); last = pt[p.key]; });
+      d += "L" + (W - R) + "," + ys(last);
+      svg.appendChild(svgEl("path", { "class": "area", d: d + "L" + (W - R) + "," + ys(0) + "Z", fill: p.color }));
+      svg.appendChild(svgEl("path", { "class": "line", d: d, stroke: p.color }));
+      G.forEach(function (pt) {
+        var step = p.key === "explored" ? pt.scanned : pt.asked.length;
+        if (step) svg.appendChild(svgEl("circle", { cx: xs(pt.date), cy: ys(pt[p.key]), r: 4, fill: p.color, stroke: "var(--surface)", "stroke-width": 2 }));
+      });
+      // Direct labels on each step of the catalogue, so small later additions
+      // stay visible next to one large first scan. Skip any that would collide.
+      if (p.key === "explored") {
+        var lastX = -1e9, row = 0, first = true;
+        G.forEach(function (pt) {
+          if (!pt.scanned) return;
+          var x = xs(pt.date);
+          row = x - lastX < 56 ? 1 - row : 0;   // crowded: drop to the other row
+          lastX = x;
+          var anchor = first ? "start" : (pt === G[G.length - 1] ? "end" : "middle");
+          var t = svgEl("text", { x: first ? x + 6 : x, y: ys(pt.explored) - 10 - row * 15, "text-anchor": anchor,
+            style: "fill:var(--ink-2);font-weight:600" });
+          t.textContent = pt.explored.toFixed(1) + "%"; svg.appendChild(t);
+          first = false;
+        });
+      }
+    });
+    var months = {}; G.forEach(function (pt) { months[pt.date.slice(0, 7)] = 1; });
+    var lastLabel = -1e9;
+    Object.keys(months).sort().forEach(function (m) {
+      var x = Math.max(L + 24, xs(m + "-01"));
+      if (x - lastLabel < 70) return;      // a month that would crowd its neighbour
+      lastLabel = x;
+      var t = svgEl("text", { x: x, y: H - 6, "text-anchor": "middle" });
+      t.textContent = new Date(m + "-15T00:00:00").toLocaleString(undefined, { month: "short", year: "numeric" }); svg.appendChild(t);
+    });
+    // One crosshair across both panels; the tooltip lists that day's questions.
+    var xh = svgEl("line", { "class": "xh", x1: 0, x2: 0, y1: TOP, y2: TOP + PH * 2 + GAP, visibility: "hidden" });
+    svg.appendChild(xh);
+    var hit = svgEl("rect", { x: L, y: 0, width: W - L - R, height: H, fill: "transparent", tabindex: 0 });
+    function at(px) {
+      var best = G[0];
+      G.forEach(function (pt) { if (Math.abs(xs(pt.date) - px) < Math.abs(xs(best.date) - px)) best = pt; });
+      return best;
+    }
+    function show(pt, cx, cy) {
+      xh.setAttribute("x1", xs(pt.date)); xh.setAttribute("x2", xs(pt.date)); xh.setAttribute("visibility", "visible");
+      var lines = [(pt.known ? fmt(pt.opened) + " of " + fmt(pt.known) + " known folders explored (" + pt.explored.toFixed(1) + "%)" : "Not scanned yet") +
+                   (pt.scanned ? ", scanned that day" : ""),
+                   pt.questions + " questions answered" + (pt.asked.length ? " (+" + pt.asked.length + " that day)" : "")];
+      pt.asked.slice(0, 4).forEach(function (q) { lines.push("• " + (q.goal.length > 90 ? q.goal.slice(0, 89) + "…" : q.goal)); });
+      if (pt.asked.length > 4) lines.push("+ " + (pt.asked.length - 4) + " more");
+      showTip(cx, cy, pt.date, lines);
+    }
+    hit.addEventListener("mousemove", function (e) { var r = svg.getBoundingClientRect(); show(at(e.clientX - r.left), e.clientX, e.clientY); });
+    hit.addEventListener("mouseleave", function () { xh.setAttribute("visibility", "hidden"); hideTip(); });
+    var kIdx = G.length - 1;
+    function showKey() { var r = svg.getBoundingClientRect(); show(G[kIdx], r.left + xs(G[kIdx].date), r.top); }
+    hit.addEventListener("focus", showKey);
+    hit.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") kIdx = Math.max(0, kIdx - 1); else if (e.key === "ArrowRight") kIdx = Math.min(G.length - 1, kIdx + 1); else return;
+      e.preventDefault(); showKey();
+    });
+    hit.addEventListener("blur", function () { xh.setAttribute("visibility", "hidden"); hideTip(); });
+    svg.appendChild(hit);
+    host.appendChild(svg);
+    var lg = el("div", "legend");
+    lg.appendChild(el("span", null, "Explored means forage has listed what is inside a folder; the rest it has only seen from outside, past the depth of its scans. Each dot is a scan or a question. Hover, or focus the chart and use the arrow keys, to see that day."));
+    host.appendChild(lg);
+  }
+
+  function render() {
+    var th = D.themes;
+    heatmap(document.getElementById("v-themes"), th.rows, th.cols,
+      function (r, c) { var v = th.cells[r + "|" + c]; return COLLAB ? (v || 0) : (v ? v.length : 0); },
+      function (r) { return th.row_totals[r]; },
+      function (r, c, v) {
+        if (!v) return [r, "No " + c + " projects"];
+        if (COLLAB) return [r + " · " + c, v + " project" + (v === 1 ? "" : "s")];
+        var rs = th.cells[r + "|" + c];
+        return [r + " · " + c, rs.slice(0, 8).map(function (x) { return x.id + " - " + (x.title || x.type); })
+          .concat(rs.length > 8 ? ["+ " + (rs.length - 8) + " more"] : [])];
+      }, null, ORANGE);
+    var rows1 = [];
+    th.rows.forEach(function (r) { th.cols.forEach(function (c) {
+      var v = th.cells[r + "|" + c]; var n = COLLAB ? (v || 0) : (v ? v.length : 0);
+      if (n) rows1.push([r, c, fmt(n)].concat(COLLAB ? [] : [v.map(function (x) { return x.id; }).join(", ")]));
+    }); });
+    tableView(document.getElementById("v-themes"), ["Theme", "Approach", "Projects"].concat(COLLAB ? [] : ["Request IDs"]), rows1, [2]);
+
+    bars(document.getElementById("v-methods"), D.methods.map(function (m) {
+      return { label: m.name, value: m.units, detail: m.tissues.length ? ["Most often on: " + m.tissues.join(", ")] : [] };
+    }), "project folders", "--cat-2");
+    tableView(document.getElementById("v-methods"), ["Method", "Project folders", "Most often on"],
+      D.methods.map(function (m) { return [m.name, fmt(m.units), m.tissues.join(", ")]; }), [1]);
+
+    var f = D.focus;
+    heatmap(document.getElementById("v-focus"), f.tissues, f.stages,
+      function (r, c) { return (f.cells[r] || {})[c] || 0; }, null,
+      function (r, c, v) { return [r + " · " + c, v ? fmt(v) + " project folders" : "None", fmt(f.tissue_units[r]) + " folders on " + r + " in total"]; },
+      function (c) { return c.replace(/ \(/, "\n(").replace("Post-treatment timepoint", "Post-\ntreatment"); });
+    tableView(document.getElementById("v-focus"), ["Tissue", "All folders"].concat(f.stages),
+      f.tissues.map(function (t) { return [t, fmt(f.tissue_units[t])].concat(f.stages.map(function (s) { return fmt((f.cells[t] || {})[s] || 0); })); }),
+      [1].concat(f.stages.map(function (_, i) { return i + 2; })));
+    bars(document.getElementById("v-cond"), f.conditions.map(function (c) { return { label: c[0], value: c[1] }; }), "project folders", "--cat-3");
+    var sp = document.getElementById("v-species"); sp.innerHTML = "";
+    if (!f.species.length) sp.appendChild(el("p", "note", "None named."));
+    var chips = el("div", "chips");
+    f.species.forEach(function (s) { var c = el("span", "chip", s[0]); c.setAttribute("data-term", s[0]); c.appendChild(el("b", null, fmt(s[1]))); chips.appendChild(c); });
+    sp.appendChild(chips);
+
+    bars(document.getElementById("v-tools"), D.toolkit.tools.map(function (t) {
+      return { label: t.name, sub: t["class"], value: t.units, detail: [t["class"]] }; }), "project folders", "--cat-3");
+    tableView(document.getElementById("v-tools"), ["Tool", "Class", "Project folders"],
+      D.toolkit.tools.map(function (t) { return [t.name, t["class"], fmt(t.units)]; }), [2]);
+    bars(document.getElementById("v-lang"), D.toolkit.languages.map(function (l) { return { label: l[0], value: l[1] }; }), "project folders", "--cat-7");
+
+    if (!COLLAB && X) {
+      document.getElementById("explore").hidden = false;
+      var xs = document.getElementById("xstats"); xs.innerHTML = "";
+      [[fmt(X.files), "files catalogued"], [bytes(X.bytes || 0), "of data catalogued"],
+       [(X.folders_known ? (100 * X.folders_opened / X.folders_known).toFixed(1) : "0") + "%", "of known folders explored"], [fmt(X.questions), "questions answered"],
+       [fmt(X.archives_opened) + " of " + fmt(X.archives_total), "archives opened"]].forEach(function (s) {
+        var d = el("div", "xstat"); d.appendChild(el("div", "v", s[0])); d.appendChild(el("div", "l", s[1])); xs.appendChild(d); });
+      renderSun(); renderGrowth();
+      var etv = document.getElementById("explore-tv"); etv.innerHTML = "";
+      tableView(etv, ["Top-level folder", "Files", "Storage"], (X.tree.c || []).map(function (ch) {
+        return [ch.n, fmt(ch.f), bytes(ch.b || 0)]; }), [1, 2], "Folder table");
+      tableView(etv, ["Date", "Folders explored", "Known folders", "Explored", "Questions answered", "Questions that day"], (X.growth || []).map(function (pt) {
+        return [pt.date, pt.opened == null ? "-" : fmt(pt.opened), pt.known == null ? "-" : fmt(pt.known),
+                pt.explored == null ? "-" : pt.explored.toFixed(1) + "%", String(pt.questions),
+                pt.asked.map(function (q) { return q.goal; }).join(" | ")]; }), [1, 2, 3, 4], "Growth table");
+    }
+    applySelection();
+  }
+
+  // ---- publications (public: both editions)
+  (function () {
+    var pubs = (D.lab && D.lab.publications) || [];
+    if (!pubs.length) return;
+    document.getElementById("pubcard").hidden = false;
+    var pi = (D.lab.pi && D.lab.pi.pubmed_author) || "";
+    document.getElementById("pubhow").textContent = "The lab's five most recent papers. From PubMed" +
+      (D.lab.publications_fetched ? ", updated " + D.lab.publications_fetched : "") + ".";
+    var ol = document.getElementById("pubs");
+    pubs.forEach(function (p) {
+      var li = el("li"); li.appendChild(el("div", "yr", p.year || ""));
+      var body = el("div");
+      var a = el("a", null, p.title); a.href = "https://doi.org/" + p.doi; a.target = "_blank"; a.rel = "noopener noreferrer";
+      body.appendChild(a);
+      var meta = el("div", "meta");
+      var names = (p.authors || "").split(", ");
+      var shown = names.length > 6 ? names.slice(0, 3).concat(["…"], names.slice(-1)) : names;
+      shown.forEach(function (n, i) {
+        if (i) meta.appendChild(document.createTextNode(", "));
+        meta.appendChild(n === pi ? el("b", null, n) : document.createTextNode(n));
+      });
+      meta.appendChild(document.createTextNode(". " + p.journal + (p.month ? " " + p.year + "-" + p.month : "") + ". "));
+      var doi = el("a", null, "doi:" + p.doi); doi.href = "https://doi.org/" + p.doi; doi.target = "_blank"; doi.rel = "noopener noreferrer";
+      doi.style.fontWeight = "400"; doi.style.color = "var(--bar)"; meta.appendChild(doi);
+      if (p.type) meta.appendChild(el("span", "type", p.type));
+      body.appendChild(meta); li.appendChild(body); ol.appendChild(li);
+    });
+  })();
+
+  document.getElementById("foot").textContent = (COLLAB ? "Overview for collaborators. " : "Lab overview, internal edition. ") +
+    "Built " + D.generated.slice(0, 10) + " by sigil from the lab's data collection.";
+
+  renderPanel(); render(); layoutCloud();
+  var sw = document.getElementById("dark");
+  function syncSwitch() { sw.setAttribute("aria-checked", dark() ? "true" : "false"); }
+  syncSwitch();
+  sw.addEventListener("click", function () {
+    document.documentElement.setAttribute("data-theme", dark() ? "light" : "dark"); syncSwitch(); render();
+  });
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { syncSwitch(); render(); });
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { layoutCloud(); render(); }, 200); });
+})();
+</script>
+</body>
+</html>

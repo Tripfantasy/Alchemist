@@ -27,5 +27,5 @@ If that is empty, ask what they are trying to do before routing anything.
   the agent asks and records it itself.
 - If the request spans agents, give an ordered sequence and say what the person
   decides between steps. The handoffs are manual by design.
-- If none of the three fit, say so and point at what the nearest one actually
+- If none of the four fit, say so and point at what the nearest one actually
   does. Do not stretch a request to fit an agent.

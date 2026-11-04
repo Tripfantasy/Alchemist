@@ -109,7 +109,7 @@ explains what earns it.
 plausibly satisfy this request? Then it is too vague. Typical gaps:
 
 - **Organism / model** — mouse, human, zebrafish, a cell line?
-- **Tissue or region** — OE, OB, VNO, cortex, whole brain?
+- **Tissue or region** — heart, liver, cortex, whole brain?
 - **Modality** — bulk vs single-cell vs single-nucleus vs spatial vs imaging?
 - **Comparison** — what is being contrasted? Genotype, age, condition, timepoint?
   A goal with no contrast usually means the researcher has not settled the design.

@@ -110,7 +110,9 @@
     "intan": "Intan electrophysiology",
     "twophoton": "two-photon imaging",
     "2p": "two-photon imaging",
-    "widefield": "widefield imaging"
+    "widefield": "widefield imaging",
+    "behavior": "behavior",
+    "treadmill": "treadmill behavior"
   },
   "modifier": {
     "sc": "single-cell",
@@ -143,7 +145,9 @@
     "gfp": "GFP",
     "tdtomato": "tdTomato",
     "cre": "Cre recombinase",
-    "creert2": "CreERT2"
+    "creert2": "CreERT2",
+    "gcamp": "GCaMP calcium indicator",
+    "cfos": "cFos"
   },
   "species": {
     "mm": "mouse",

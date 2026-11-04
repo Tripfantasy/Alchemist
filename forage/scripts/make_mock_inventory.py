@@ -53,6 +53,16 @@ INFERENCE_TREE = [
     ("/lab_data/imaging/xenium_kidney_injury_d3/", ["cells.zarr",
                                                         "transcripts.parquet"]),
     ("/lab_data/reference/mm10/", ["genome.fa", "genes.gtf"]),
+    # Non-sequencing work on other roots: no request record can describe it,
+    # so it reaches the store only through vocabulary inference.
+    ("/lab_data/proteomics/tmt_liver_hfd/", ["peptides.tsv", "proteins.xlsx"]),
+    ("/rigs/patch_clamp/cm_myh7_ko/", ["cell01.abf", "cell02.abf", "iv_analysis.m",
+                                       "iv_curves.mat"]),
+    ("/rigs/miniscope/cortex_gcamp_adult/", ["traces.csv", "cnmfe_pipeline.ipynb"]),
+    ("/rigs/behavior/treadmill_mi_d28/", ["run_times.csv", "stats.R"]),
+    ("/core_imaging/confocal/lv_tdtomato_creert2_d7/", ["heart_01.czi", "heart_02.czi",
+                                                       "quantify.py"]),
+    ("/core_imaging/hcr/kidney_injury_d3/", ["probe_set.csv", "hcr_stack.tif"]),
 ]
 
 # Deliberately meaningless -> must be refused as 'unknown'.
@@ -86,7 +96,7 @@ def main() -> None:
         "run_id": "run-mock",
         "collection_id": "00000000-mock-0000-0000-000000000000",
         "collection_name": "MOCK Example Lab Collection",
-        "roots": ["/lab_data/"],
+        "roots": ["/lab_data/", "/rigs/", "/core_imaging/"],
         "depth": 8,
         "types": [],
         "exclude": [],
