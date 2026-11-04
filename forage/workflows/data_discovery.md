@@ -276,6 +276,61 @@ inventory was indexed last. After indexing several, the gap analysis in Step 7
 describes only the last one. Index the inventory the goal actually depends on
 last, and say in the report which roots the coverage numbers cover.
 
+## Step 3a — Archives in scope: detect, then ask
+
+A scan sees a `.zip` as one file. Data that exists can sit inside one and be
+invisible to every search. The MOLNG-4089 ARC outputs did, in a 763 GB core
+archive, after three scans had called them missing.
+
+**Detect, always.** After the first-pass search (Step 5), whether the inventory
+was scanned this run or reused, list the archives in scope. This step is local
+and makes no network calls:
+
+```bash
+./.venv/bin/python scripts/zip_index.py --find knowledge/inventory.jsonl \
+    --folder /the/scoped/root/
+```
+
+**Then ask before opening any.** If any are found, show them to the
+researcher with their real size and date, and ask which to look inside. Use one
+`AskUserQuestion`, separate from intake:
+
+> The scanned scope holds 2 .zip archives the search cannot see into:
+> - **`secondary_part2.zip`**, 763 GB, 2025-07-03
+> - **`secondary_part1.zip`**, 273 GB, 2025-07-03
+>
+> Listing their contents reads only each zip's index, a few MB and a few
+> seconds, never the data. Look inside?
+
+- Put the cost in the question. Listing is cheap. What it finds is not:
+  members still have to be extracted from inside the archive. Say so, and
+  report member sizes, so nobody learns the cost by starting a 763 GB download.
+- Order archives by plausibility for the goal (date after the request's
+  completion, a name matching the requester or project), not by size.
+- If the researcher declines, the report says the archives exist, unopened,
+  and that the gap analysis cannot rule out data inside them.
+- If no archives are in scope, say nothing and move on.
+
+**Open the ones they pick:**
+
+```bash
+./.venv/bin/python scripts/zip_index.py "$GLOBUS_AGENT_COLLECTION_ID" \
+    --zip /path/a.zip --zip /path/b.zip \
+    --out knowledge/inventory_zip_<name>.jsonl
+```
+
+Then index (Step 4) and search (Step 5) the new inventory.
+- Paths come out as `<archive>.zip!/<member>`. Index the file like any
+  inventory (Step 4). Cite members by that path in reports, never as if they
+  existed on the collection in their own right.
+- `.zip` only. `.tar`/`.tar.gz` have no central directory and cannot be listed
+  without reading the whole archive. Report those as opaque.
+- **`--quick` runs detect but never open.** `--find` is local, so quick-match
+  runs it on its search scope. Opening an archive is network work, so
+  quick-match never does it. It names the archives in its scope line ("2
+  unopened .zip archives, 1.0 TB, may hold matches") and hands back the full
+  `/forage <goal>`.
+
 ## Step 4 — Index
 
 ```bash

@@ -127,6 +127,46 @@ Follow `workflows/data_discovery.md`. In short:
 Then read `candidates.json`, apply judgment, and write the report from
 `resources/report_template.md` into `output/`.
 
+## Looking inside .zip archives
+
+A scan sees a `.zip` as one file, so whatever is inside it never matches a
+search. That happens: one dataset was "missing" across three scans while sitting
+in a 763 GB archive. `scripts/zip_index.py` lists an archive's contents without
+downloading it. It range-reads only the zip's central directory (its table of
+contents) over the collection's HTTPS server: a few seconds and a few MB per
+archive, whatever its size.
+
+```bash
+# 1. Local, no network: which archives are in scope?
+./.venv/bin/python scripts/zip_index.py --find knowledge/inventory.jsonl --folder /projects/yu/
+
+# 2. List the contents of the ones you choose
+./.venv/bin/python scripts/zip_index.py "$GLOBUS_AGENT_COLLECTION_ID" \
+    --zip /projects/yu/archive.zip --out knowledge/inventory_zip.jsonl
+
+# 3. Index and search it like any scan
+./.venv/bin/python scripts/build_index.py --inventory knowledge/inventory_zip.jsonl
+```
+
+Members appear as `<archive>.zip!/<member>` paths, so a report can never present
+one as a file sitting on the collection in its own right.
+
+In a `/forage` run this is automatic up to a point. After the first-pass search
+the agent runs `--find`, and if archives are in scope it **asks** whether to
+look inside, showing their size and date. It never opens one unasked. It also
+never says data is absent while unopened archives remain in scope. `--quick`
+runs report the archives but never open them.
+
+What it cannot do:
+
+- **Extract.** It lists members; getting one out is a download for you to run.
+  Reports give member sizes so the cost is visible first.
+- **Read `.tar` / `.tar.gz`.** Those have no central directory, so listing one
+  means reading the whole archive. They are reported as opaque.
+- **Work without HTTPS.** The collection must expose an HTTPS server. The
+  confidential client gets a token for the collection's `https` scope; no extra
+  setup was needed on a GCSv5 guest collection where the client holds `r`.
+
 ## Reports: .md + .pdf
 
 Every report ships as both. The `.md` is the source of truth; the `.pdf` is
@@ -184,6 +224,17 @@ client holds `r` on the guest collection, so Globus rejects writes server-side
 regardless of what this code asks for. This is the layer that holds when the
 others fail.
 
+**Archive listing reads over HTTPS, not Transfer.** The same `r` permission is
+what binds it: the HTTPS server enforces the collection ACL, so a write is
+refused there too. `zip_index.py` adds its own backstops:
+
+- a session that sends only GET and HEAD
+- a per-archive byte cap (`--max-index-mb`, default 256)
+- a hard stop if the server ignores a Range header and starts sending the
+  whole file
+
+It reads an archive's index into memory and never writes fetched bytes to disk.
+
 This is why a confidential client beats a Native App here: a Native App acts as
 *you*, inheriting your write access, which collapses layer 1 and leaves the
 guard as the only protection.
@@ -201,6 +252,7 @@ reads the permission list instead: same answer, no side effects.
 | --- | --- |
 | `scripts/globus_auth.py` | confidential-client auth (Keychain secret), Native App fallback |
 | `scripts/scan_endpoint.py` | recursive read-only walk → `inventory.jsonl` |
+| `scripts/zip_index.py` | `.zip` contents via HTTPS range reads of the central directory → inventory; `--find` lists archives in scope locally |
 | `scripts/build_index.py` | CSV join + vocabulary inference → associations |
 | `scripts/search.py` | lexical recall over the store → ranked candidates |
 | `scripts/kb.py` | the only writer to `knowledge/`; supersession + fingerprints |
