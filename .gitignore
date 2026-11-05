@@ -38,6 +38,11 @@ forage/resources/vocab.json
 # The site's request-ID and project-code formats. site.example.json ships.
 forage/resources/site.json
 
+# A lab's colony lists, and the mouse-line registry built from them: line
+# names, in-house constructs and who keeps what. mouse_lines.example.json ships.
+forage/resources/colony/
+forage/resources/mouse_lines.json
+
 # The lab's own description of itself, written on sigil's first run.
 sigil/resources/lab.json
 

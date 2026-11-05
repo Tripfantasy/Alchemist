@@ -87,6 +87,9 @@ h3 { font-size: 14px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; }
 .cloud .w.in:hover { transform: scale(1.08); }
 .cloud .w.off { opacity: .12; }
 .cloud .w.sel { outline: 2px solid var(--c); outline-offset: 3px; }
+.cloud .w.in.faded { opacity: .45; }
+.cloud .w.in.faded.off { opacity: .12; }
+.cats .fadenote { font-size: 13px; color: var(--ink-2); align-self: center; }
 .panel { background: var(--surface-2); border-radius: 12px; padding: 14px 16px; font-size: 14px; align-self: start; }
 .panel .pt { font-size: 18px; font-weight: 600; margin: 0 0 2px; }
 .panel .pc { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
@@ -208,7 +211,8 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
 
   <section class="card">
     <h2>The lab at a glance</h2>
-    <p class="how">The words that come up most across the lab's work. Bigger means more projects. Click a word to see what it goes with and to highlight it in the charts below; click a group to hide or show it.</p>
+    <div class="seg-toggle" role="group" aria-label="Word cloud" id="cloudtabs" hidden><button type="button" id="tab-main" aria-pressed="true">Lab vocabulary</button><button type="button" id="tab-lines" aria-pressed="false">Mouse lines</button></div>
+    <p class="how" id="cloudhow"></p>
     <div class="cats" id="cats"></div>
     <div class="cloudwrap"><div class="cloud" id="cloud"></div><div class="panel" id="panel"></div></div>
     <div id="cloud-tv"></div>
@@ -347,23 +351,63 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
     for (var j = 0; j < ws.length; j++) ws[j].classList.toggle("sel", ws[j].getAttribute("data-t") === selected);
   }
 
-  // ---- word cloud
+  // ---- word cloud: two views, the lab's vocabulary and its mouse lines
   var cloudHost = document.getElementById("cloud"), panel = document.getElementById("panel");
-  var byTerm = {}; D.cloud.forEach(function (w) { byTerm[w.t] = w; });
+  var M = D.mouse && D.mouse.cloud && D.mouse.cloud.length ? D.mouse : null;
+  var LSLOTS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5", "--cat-6", "--cat-7"];
+  var FADED = { cryo: true, archived: true };
+  var VIEWS = {
+    main: {
+      words: D.cloud, cats: CATS, cat: function (w) { return w.cat; }, pick: "Pick a word",
+      how: "The words that come up most across the lab's work. Bigger means more projects. Click a word to see what it goes with and to highlight it in the charts below; click a group to hide or show it.",
+      intro: "Each word links to the projects that mention it. The most common are ",
+      count: function (w) { return fmt(w.n) + " project folder" + (w.n === 1 ? "" : "s"); },
+      withLabel: "Often together with:"
+    }
+  };
+  if (M) {
+    // Classes keep their slot in the fixed class order, whichever are present.
+    M.classes.forEach(function (c, i) { CATVAR[c] = LSLOTS[i % LSLOTS.length]; });
+    var present = {}; M.cloud.forEach(function (w) { present[w.cls] = true; });
+    VIEWS.lines = {
+      words: M.cloud, cat: function (w) { return w.cls; }, pick: "Pick a line",
+      cats: M.classes.filter(function (c) { return present[c]; }).map(function (c) { return [c, CATVAR[c]]; }),
+      how: COLLAB
+        ? "The mouse lines behind the lab's data, from lines available through public repositories. Bigger means more datasets use the line. Faded lines are no longer kept in the lab's colony. Click a line to see what it is."
+        : "The mouse lines named in the lab's data folders, read against the colony list. Bigger means more folders are named with the line. Faded lines are no longer kept in the colony. Click a line to see what it is and what it is crossed with; click a kind to hide or show it.",
+      intro: "Each line links to what it is and the lines it is crossed with. The most common are ",
+      count: function (w) { return fmt(w.n) + (COLLAB ? " dataset folder" : " folder") + (w.n === 1 ? "" : "s") + (COLLAB ? "" : " named with it"); },
+      withLabel: "Often in the same folder as:"
+    };
+  }
+  var VIEW = "main";
+  function V() { return VIEWS[VIEW]; }
+  var byTerm = {};
+  function indexTerms() { byTerm = {}; V().words.forEach(function (w) { byTerm[w.t] = w; }); }
+  indexTerms();
+
   function renderPanel() {
     panel.innerHTML = "";
-    var w = selected && byTerm[selected];
+    var v = V(), w = selected && byTerm[selected];
     if (!w) {
-      panel.appendChild(el("div", "pt", "Pick a word"));
-      panel.appendChild(el("div", null, D.cloud.length ? "Each word links to the projects that mention it. The most common are " +
-        D.cloud.slice(0, 3).map(function (x) { return x.t; }).join(", ") + "." : "No words yet."));
+      panel.appendChild(el("div", "pt", v.pick));
+      panel.appendChild(el("div", null, v.words.length ? v.intro +
+        v.words.slice(0, 3).map(function (x) { return x.t; }).join(", ") + "." : "No words yet."));
       return;
     }
-    var cat = el("div", "pc", w.cat); cat.style.color = "var(" + CATVAR[w.cat] + ")";
+    var catName = v.cat(w);
+    var cat = el("div", "pc", catName); cat.style.color = "var(" + CATVAR[catName] + ")";
     panel.appendChild(cat); panel.appendChild(el("div", "pt", w.t));
-    panel.appendChild(el("div", null, fmt(w.n) + " project folder" + (w.n === 1 ? "" : "s")));
+    if (VIEW === "lines") {
+      if (w.target) panel.appendChild(el("div", null, "Targets " + w.target));
+      if (w.official && w.official !== w.t) {
+        var o = el("div", "note", w.official); o.style.wordBreak = "break-all"; o.style.fontSize = "12px"; panel.appendChild(o);
+      }
+      panel.appendChild(el("div", null, M.status_labels[w.status] || w.status));
+    }
+    panel.appendChild(el("div", null, v.count(w)));
     if (w["with"].length) {
-      var lab = el("div", null, "Often together with:"); lab.style.marginTop = "8px"; panel.appendChild(lab);
+      var lab = el("div", null, v.withLabel); lab.style.marginTop = "8px"; panel.appendChild(lab);
       var ul = el("ul");
       w["with"].forEach(function (x) {
         var li = el("li");
@@ -385,31 +429,38 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
   function select(t) { selected = (t === selected ? null : t); renderPanel(); applySelection(); }
 
   var cats = document.getElementById("cats");
-  CATS.forEach(function (c) {
-    var b = el("button", "cat"); b.type = "button"; b.setAttribute("aria-pressed", "true");
-    b.style.setProperty("--c", "var(" + c[1] + ")");
-    b.appendChild(el("span", "sw")); b.appendChild(document.createTextNode(c[0]));
-    b.addEventListener("click", function () {
-      hiddenCats[c[0]] = !hiddenCats[c[0]]; b.setAttribute("aria-pressed", hiddenCats[c[0]] ? "false" : "true");
-      var ws = document.querySelectorAll(".cloud .w");
-      for (var i = 0; i < ws.length; i++) ws[i].classList.toggle("off", !!hiddenCats[ws[i].getAttribute("data-cat")]);
+  function renderCats() {
+    cats.innerHTML = "";
+    V().cats.forEach(function (c) {
+      var b = el("button", "cat"); b.type = "button"; b.setAttribute("aria-pressed", hiddenCats[c[0]] ? "false" : "true");
+      b.style.setProperty("--c", "var(" + c[1] + ")");
+      b.appendChild(el("span", "sw")); b.appendChild(document.createTextNode(c[0]));
+      b.addEventListener("click", function () {
+        hiddenCats[c[0]] = !hiddenCats[c[0]]; b.setAttribute("aria-pressed", hiddenCats[c[0]] ? "false" : "true");
+        var ws = document.querySelectorAll(".cloud .w");
+        for (var i = 0; i < ws.length; i++) ws[i].classList.toggle("off", !!hiddenCats[ws[i].getAttribute("data-cat")]);
+      });
+      cats.appendChild(b);
     });
-    cats.appendChild(b);
-  });
+    if (VIEW === "lines" && M.cloud.some(function (w) { return FADED[w.status]; }))
+      cats.appendChild(el("span", "fadenote", "Faded: no longer kept in the colony"));
+  }
 
   function layoutCloud() {
     cloudHost.innerHTML = "";
+    var v = V(), words = v.words;
     var W = cloudHost.clientWidth || 600, H = Math.max(280, Math.min(420, Math.round(W * 0.55)));
     cloudHost.style.height = H + "px";
-    if (!D.cloud.length) { cloudHost.appendChild(el("p", "note", "Nothing in the collection describes the lab's work yet.")); return; }
+    if (!words.length) { cloudHost.appendChild(el("p", "note", "Nothing in the collection describes the lab's work yet.")); return; }
     var ctx = document.createElement("canvas").getContext("2d");
-    var max = D.cloud[0].n, min = D.cloud[D.cloud.length - 1].n, placed = [], cx = W / 2, cy = H / 2;
+    var max = words[0].n, min = words[words.length - 1].n, placed = [], cx = W / 2, cy = H / 2;
     var family = getComputedStyle(document.body).fontFamily;
-    D.cloud.forEach(function (w, i) {
+    words.forEach(function (w, i) {
       var r = max === min ? 1 : (w.n - min) / (max - min);
       var size = Math.round(13 + Math.sqrt(r) * (W < 500 ? 24 : 36));
       ctx.font = "600 " + size + "px " + family;
       var bw = ctx.measureText(w.t).width + 8, bh = size * 1.15;
+      var catName = v.cat(w);
       for (var t = 0; t < 1200; t += 0.3) {
         var x = cx + 1.5 * t * Math.cos(t) * (W / H) * 0.9 - bw / 2;
         var y = cy + 1.5 * t * Math.sin(t) - bh / 2;
@@ -422,11 +473,17 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
         if (hit) continue;
         placed.push({ x: x, y: y, w: bw, h: bh });
         var b = el("button", "w", w.t); b.type = "button";
-        b.setAttribute("data-t", w.t); b.setAttribute("data-cat", w.cat);
+        b.setAttribute("data-t", w.t); b.setAttribute("data-cat", catName);
         b.style.left = x + "px"; b.style.top = y + "px"; b.style.fontSize = size + "px";
-        b.style.setProperty("--c", "var(" + CATVAR[w.cat] + ")");
-        if (hiddenCats[w.cat]) b.classList.add("off");
-        bindTip(b, w.t, [w.cat, fmt(w.n) + " project folder" + (w.n === 1 ? "" : "s")]);
+        b.style.setProperty("--c", "var(" + CATVAR[catName] + ")");
+        if (hiddenCats[catName]) b.classList.add("off");
+        var detail = [catName, v.count(w)];
+        if (VIEW === "lines") {
+          if (FADED[w.status]) b.classList.add("faded");
+          if (w.target) detail.splice(1, 0, "Targets " + w.target);
+          detail.push(M.status_labels[w.status] || w.status);
+        }
+        bindTip(b, w.t, detail);
         b.addEventListener("click", function () { select(w.t); });
         cloudHost.appendChild(b);
         if (REDUCED) b.classList.add("in");
@@ -436,8 +493,34 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
     });
     applySelection();
   }
-  tableView(document.getElementById("cloud-tv"), ["Word", "Group", "Project folders", "Often together with"],
-    D.cloud.map(function (w) { return [w.t, w.cat, fmt(w.n), w["with"].join(", ")]; }), [2]);
+
+  var cloudTv = document.getElementById("cloud-tv");
+  function renderCloudTable() {
+    cloudTv.innerHTML = "";
+    if (VIEW === "lines") {
+      tableView(cloudTv, ["Line", "Kind", "Targets", "Colony", COLLAB ? "Dataset folders" : "Folders named with it", "Often in the same folder as"],
+        M.cloud.map(function (w) { return [w.t, w.cls, w.target || "", M.status_labels[w.status] || w.status, fmt(w.n), w["with"].join(", ")]; }), [4]);
+    } else {
+      tableView(cloudTv, ["Word", "Group", "Project folders", "Often together with"],
+        D.cloud.map(function (w) { return [w.t, w.cat, fmt(w.n), w["with"].join(", ")]; }), [2]);
+    }
+  }
+
+  var howEl = document.getElementById("cloudhow");
+  function setView(name) {
+    VIEW = name; selected = null; indexTerms();
+    document.getElementById("tab-main").setAttribute("aria-pressed", name === "main" ? "true" : "false");
+    document.getElementById("tab-lines").setAttribute("aria-pressed", name === "lines" ? "true" : "false");
+    howEl.textContent = V().how;
+    renderCats(); renderPanel(); layoutCloud(); renderCloudTable();
+  }
+  if (M) {
+    document.getElementById("cloudtabs").hidden = false;
+    document.getElementById("tab-main").addEventListener("click", function () { if (VIEW !== "main") setView("main"); });
+    document.getElementById("tab-lines").addEventListener("click", function () { if (VIEW !== "lines") setView("lines"); });
+  }
+  howEl.textContent = V().how;
+  renderCats(); renderCloudTable();
 
   // ---- generic charts
   function heatmap(host, rows, cols, value, rowTotal, tipFor, colLabel, ramp) {
@@ -722,8 +805,15 @@ footer { color: var(--muted); font-size: 12px; margin-top: 28px; }
       var xs = document.getElementById("xstats"); xs.innerHTML = "";
       [[fmt(X.files), "files catalogued"], [bytes(X.bytes || 0), "of data catalogued"],
        [(X.folders_known ? (100 * X.folders_opened / X.folders_known).toFixed(1) : "0") + "%", "of known folders explored"], [fmt(X.questions), "questions answered"],
-       [fmt(X.archives_opened) + " of " + fmt(X.archives_total), "archives opened"]].forEach(function (s) {
-        var d = el("div", "xstat"); d.appendChild(el("div", "v", s[0])); d.appendChild(el("div", "l", s[1])); xs.appendChild(d); });
+       [fmt(X.archives_opened) + " of " + fmt(X.archives_total), X.archive_min_mb != null ? "large archives opened" : "archives opened", "archives"]].forEach(function (s) {
+        var d = el("div", "xstat"); d.appendChild(el("div", "v", s[0])); d.appendChild(el("div", "l", s[1])); xs.appendChild(d);
+        if (s[2] === "archives" && X.archive_min_mb != null) {
+          var mi = X.archives_minor || {}, why = [];
+          [["single-file wrapper", "single files zipped for transfer"], ["ROI set", "ROI sets"], ["zarr store", "zarr stores (indexed as datasets)"],
+           ["small archive", "archives under " + X.archive_min_mb + " MB"]].forEach(function (r) { if (mi[r[0]]) why.push(fmt(mi[r[0]]) + " " + r[1]); });
+          bindTip(d, "Archives that can hold a folder of files, " + X.archive_min_mb + " MB or larger",
+            why.length ? ["Not counted:"].concat(why) : null);
+        } });
       renderSun(); renderGrowth();
       var etv = document.getElementById("explore-tv"); etv.innerHTML = "";
       tableView(etv, ["Top-level folder", "Files", "Storage"], (X.tree.c || []).map(function (ch) {

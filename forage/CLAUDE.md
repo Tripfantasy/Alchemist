@@ -60,7 +60,13 @@ which is the single source of truth - read it, do not work from memory.
 - Site resources follow one pattern: resources/<name> is the site's own copy
   (gitignored), resources/<name>.example (or _example) is the shipped default,
   and scripts prefer the site copy (kb.resource). This covers site.json
-  (request-ID format), vocab.json, metadata.csv and project_codes.json.
+  (request-ID format), vocab.json, metadata.csv, project_codes.json and
+  mouse_lines.json (built from the lab's colony list by
+  `scripts/mouse_lines.py build`; the colony CSVs live in resources/colony/,
+  also gitignored). Never read a colony column that names people.
+- Mouse-line matches are path inferences: they can lift a file from `unknown`
+  to `inferred`, never to `csv`. Run `mouse_lines.py probe` on an inventory
+  after any registry change and look for false matches before re-indexing.
 - resources/vocab.example.json is a STARTER vocabulary. Copy it to vocab.json
   and grow it from the site's own metadata and folder names. Refusals in
   `ambiguous` are collection-specific judgments: record the evidence for each in
@@ -88,7 +94,7 @@ hand-edit the JSONL files, and never write them from anywhere else.
 - knowledge/inventory.jsonl - raw endpoint scan cache
 - knowledge/coverage.json - gap-analysis inputs from the last index build
 - knowledge/snapshot.json - aggregated export for other agents
-  (scripts/export_snapshot.py). forage's ONE public interface: sigil reads this
+  (scripts/export_snapshot.py; schema 2 adds `mouse_lines`). forage's ONE public interface: sigil reads this
   and nothing else of forage's. Aggregates only, never per-file records. Bump
   `schema` on any shape change; consumers refuse an unknown one.
 

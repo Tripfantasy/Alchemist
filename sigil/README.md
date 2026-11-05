@@ -83,6 +83,7 @@ already scanned, and the dashboard says so at the top.
 | View | Answers |
 | --- | --- |
 | The lab at a glance (word cloud) | The lab's most common tissues, methods, models and tools. Click a word for what it goes with; it highlights in every chart |
+| Mouse lines (second tab of the cloud) | The lines named in the lab's data folders, sized by folders and coloured by kind; faded if no longer kept in the colony. Appears when forage has a mouse-line registry. The collaborator edition shows only lines with a public repository stock |
 | Research themes and how they are approached | Which sequencing approaches each theme uses |
 | Methods beyond sequencing | Physiology, imaging, behavior, proteomics, and on which tissues |
 | Biological focus | Tissue × developmental stage or timepoint; conditions; organisms |

@@ -1,0 +1,83 @@
+{
+ "version": "example",
+ "_comment": [
+  "Synthetic example registry. Build your own from your colony list:",
+  "  scripts/mouse_lines.py build resources/colony/*.csv",
+  "which writes mouse_lines.json (gitignored) and is preferred over this file."
+ ],
+ "classes": [
+  "Cre/Flp drivers",
+  "Reporters",
+  "Activity tools",
+  "tet system",
+  "Ablation & silencing",
+  "Mutants & knock-outs",
+  "Other lines"
+ ],
+ "refuse": [],
+ "rows_read": 0,
+ "lines": [
+  {
+   "name": "Ai14",
+   "aliases": [
+    "R26R-tdT",
+    "Rosa26-tdTomato"
+   ],
+   "class": "Reporters",
+   "target": "",
+   "official": "",
+   "vendor": "",
+   "stock": "",
+   "public": true,
+   "status": "active"
+  },
+  {
+   "name": "Ai32",
+   "aliases": [
+    "R26-ChR2"
+   ],
+   "class": "Activity tools",
+   "target": "",
+   "official": "",
+   "vendor": "",
+   "stock": "",
+   "public": true,
+   "status": "cryo"
+  },
+  {
+   "name": "Myh6-MerCreMer",
+   "aliases": [
+    "MCM"
+   ],
+   "class": "Cre/Flp drivers",
+   "target": "Myh6",
+   "official": "",
+   "vendor": "",
+   "stock": "",
+   "public": true,
+   "status": "active"
+  },
+  {
+   "name": "Pvalb-Cre",
+   "aliases": [],
+   "class": "Cre/Flp drivers",
+   "target": "Pvalb",
+   "official": "",
+   "vendor": "",
+   "stock": "",
+   "public": true,
+   "status": "archived"
+  },
+  {
+   "name": "Tnnt2-GFP",
+   "aliases": [],
+   "class": "Reporters",
+   "target": "Tnnt2",
+   "official": "",
+   "vendor": "",
+   "stock": "",
+   "public": false,
+   "status": "active"
+  }
+ ]
+}

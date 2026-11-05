@@ -250,7 +250,8 @@ this lab should say so on the page, not disappear.
 
 Report the six files and what each is for. Then show the researcher what the
 collaborator edition exposes, in one short list: the theme names it shows, and
-the most prominent words in its word cloud. Ask whether anything there should
+the most prominent words in its word cloud, and the mouse lines its line tab
+shows (public-stock lines only). Ask whether anything there should
 not leave the lab. If so, re-run Step 5 with `--hide-theme`, or extend
 `families.json`, and regenerate. Never treat silence as approval to share.
 

@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import re
+import zlib
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
@@ -44,13 +45,19 @@ ROLLUP = KB_DIR / "ASSOCIATIONS.md"
 # always beats a machine assertion regardless of recency.
 SOURCE_RANK = {
     "human_correction": 40,
+    # A file folded into a bundle (e.g. one chunk of a zarr store) after it was
+    # already recorded on its own. Outranks machine assertions so the fold
+    # sticks; a human correction can still restore the file.
+    "bundle_fold": 35,
     "csv_join": 30,
     "model_judgment": 20,
     "vocab_inference": 10,
     "none": 0,
 }
 
-TIERS = ("csv", "inferred", "unknown")
+# "bundled" marks a record superseded by the bundle that now represents it.
+# Consumers that count files skip it; the history stays in the log.
+TIERS = ("csv", "inferred", "unknown", "bundled")
 
 RESOURCES = ROOT / "resources"
 
@@ -187,7 +194,7 @@ class BulkAppender:
             self._fh = None
 
 
-def append_association(
+def build_association(
     collection_id: str,
     path: str,
     tier: str,
@@ -226,7 +233,13 @@ def append_association(
         "supersedes": supersedes,
     }
     payload["record_id"] = record_id(payload)
-    store = CORRECTIONS if source == "human_correction" else ASSOCIATIONS
+    return payload
+
+
+def append_association(**kwargs) -> dict:
+    """Validate, build and append one association record."""
+    payload = build_association(**kwargs)
+    store = CORRECTIONS if payload["source"] == "human_correction" else ASSOCIATIONS
     return _append(store, payload)
 
 
@@ -307,8 +320,18 @@ def _outranks(candidate: dict, incumbent: dict) -> bool:
     return str(candidate.get("ts", "")) >= str(incumbent.get("ts", ""))
 
 
+def terms_signature(metadata: Optional[dict]) -> int:
+    """Stable fingerprint of what a record says a file is about.
+
+    Tier, source and confidence can all stay put while the terms change -- a
+    new vocabulary word, a mouse line -- so change detection compares this too.
+    """
+    cats = (metadata or {}).get("by_category") or {}
+    return zlib.crc32(json.dumps(cats, sort_keys=True).encode("utf-8"))
+
+
 def current_fingerprints() -> Dict[str, tuple]:
-    """Compact fold: file_key -> (tier, source, confidence, record_id).
+    """Compact fold: file_key -> (tier, source, confidence, record_id, terms_signature).
 
     current_state() holds whole records, which costs gigabytes once the store
     passes a million files. Callers that only need to detect a CHANGE want
@@ -328,7 +351,8 @@ def current_fingerprints() -> Dict[str, tuple]:
             ranked[key] = order
             live[key] = (rec.get("tier"), rec.get("source"),
                          float(rec.get("confidence", 0.0)),
-                         rec.get("record_id", ""))
+                         rec.get("record_id", ""),
+                         terms_signature(rec.get("metadata")))
     return live
 
 

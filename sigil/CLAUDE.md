@@ -28,7 +28,8 @@ It ships as a written profile (.md + .pdf) and an interactive dashboard
   data files.
 - Two editions every run. The collaborator edition contains no paths, request
   IDs, request titles, requester names, folders named after people, or
-  Exploration view. It is reviewed by the researcher before it is shared.
+  Exploration view. Its mouse-line tab shows only lines with a public
+  repository stock; in-house and unpublished lines are internal only. It is reviewed by the researcher before it is shared.
 - The lab's description is the researcher's own words, asked for on the first
   run and kept in resources/lab.json (gitignored). Never write it for them.
 - Broad themes, misfiled-request overrides and term merges are the lab's own
@@ -77,7 +78,9 @@ read it, do not work from memory.
 
 # Data contract
 
-The snapshot is forage's interface, schema 1 (`"kind": "forage_snapshot"`). It
+The snapshot is forage's interface, schema 1 or 2 (`"kind": "forage_snapshot"`;
+2 adds `mouse_lines`: per line, folders named with it, the lines it shares
+them with, its class, target, colony status and whether it is public). It
 holds aggregates only: per request, per project folder (`unit_depth` path
 segments), tier splits, term counts, and coverage (scans, opened and unopened
 archives). If the schema changes, forage bumps `schema` and build_profile.py
