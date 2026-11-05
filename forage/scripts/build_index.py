@@ -31,6 +31,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kb  # noqa: E402
+from mouse_lines import MouseLines  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -269,6 +270,49 @@ def read_inventory(path: Path) -> Tuple[dict, List[dict]]:
     return meta, files
 
 
+ZARR_ROOT = re.compile(r"^(.*?\.zarr(?:\.zip!)?/)")
+
+
+def collapse_zarr_stores(files: List[dict]) -> Tuple[List[dict], dict, List[Tuple[str, str]]]:
+    """Fold every file inside a zarr store into ONE record for the store.
+
+    A zarr store (a ``.zarr`` folder, or a ``.zarr.zip`` archive opened by
+    zip_index.py) is one dataset written as thousands of tiny chunk files
+    (.zarray, .zattrs, 0.0.1 ...). Counted one by one, a single Xenium output
+    becomes most of the store. The bundle record carries the member count and
+    total size, like collapse_instrument_bundles does for per-channel output.
+
+    Returns (records, stats, [(member path, store path)]) so the caller can
+    retire members that an earlier index wrote individually.
+    """
+    groups: Dict[str, List[dict]] = defaultdict(list)
+    passthrough: List[dict] = []
+    for entry in files:
+        m = ZARR_ROOT.match(entry["path"])
+        if m and len(entry["path"]) > len(m.group(1)):
+            groups[m.group(1)].append(entry)
+        else:
+            passthrough.append(entry)
+    members_of = []
+    for root, members in groups.items():
+        members_of.extend((e["path"], root) for e in members)
+        passthrough.append({
+            "kind": "bundle",
+            "path": root,
+            "name": root.rstrip("/").rsplit("/", 1)[-1],
+            "ext": ".zarr",
+            "size": sum(e.get("size", 0) for e in members),
+            "last_modified": max((e.get("last_modified", "") for e in members), default=""),
+            "depth": members[0].get("depth", 0),
+            "anchors": kb.extract_anchors(root),
+            "bundle": True,
+            "bundle_count": len(members),
+            "bundle_label": "Zarr array store",
+        })
+    passthrough.sort(key=lambda e: e["path"])
+    return passthrough, {"stores": len(groups), "files_folded": len(members_of)}, members_of
+
+
 def collapse_instrument_bundles(
     files: List[dict], vocab: Vocab
 ) -> Tuple[List[dict], dict]:
@@ -335,9 +379,19 @@ def classify(
     by_request: Dict[str, dict],
     flowcell_to_request: Dict[str, str],
     vocab: Vocab,
+    mice: Optional[MouseLines] = None,
 ) -> dict:
-    """Assign one file to a tier with metadata, source, and evidence."""
+    """Assign one file to a tier with metadata, source, and evidence.
+
+    Mouse lines named in the path (resources/mouse_lines.json, built from the
+    lab's colony list) are added on every tier. A line is specific biological
+    meaning, like a gene, so on its own it lifts a file out of 'unknown' -- but
+    the link from file to line is still read off a folder name, so it never
+    raises a file above 'inferred'.
+    """
     anchors = entry.get("anchors") or kb.extract_anchors(entry["path"])
+    lines = mice.find(entry["path"]) if mice else []
+    line_terms = [mice.describe(l) for l in lines] if lines else []
     ext_info = dict(vocab.describe_ext(entry.get("ext", "")))
     if entry.get("bundle"):
         ext_info["role"] = "{} ({} files)".format(
@@ -358,7 +412,9 @@ def classify(
         meta = dict(by_request[matched_id])
         meta["file_role"] = ext_info["role"]
         meta["file_group"] = ext_info["group"]
-        meta["terms"] = _terms_from_request(meta)
+        meta["terms"] = _terms_from_request(meta) + line_terms
+        if lines:
+            meta["by_category"] = {"mouse_line": lines}
         if entry.get("bundle"):
             meta["bundle_count"] = entry["bundle_count"]
         return {
@@ -372,6 +428,11 @@ def classify(
 
     # tier 2: vocabulary inference over the path
     reading = vocab.interpret(entry["path"])
+    if lines and not reading["non_data"]:
+        reading["by_category"]["mouse_line"] = lines
+        reading["terms"] = reading["terms"] + line_terms
+        reading["confidence"] = min(0.75, reading["confidence"] + 0.15) if reading["qualifies"] else 0.40
+        reading["qualifies"] = True
     if reading["qualifies"]:
         return {
             "tier": "inferred",
@@ -465,67 +526,131 @@ def build_coverage(
     }
 
 
+def merge_coverage(parts: List[dict], by_request: Dict[str, dict]) -> dict:
+    """One coverage.json for an index run over several inventories."""
+    if len(parts) == 1:
+        return parts[0]
+    out = dict(parts[-1])
+    for field in ("files_by_tier", "bytes_by_tier", "files_by_group"):
+        total: Dict[str, int] = defaultdict(int)
+        for c in parts:
+            for k, v in c[field].items():
+                total[k] += v
+        out[field] = dict(total)
+    out["files_scanned"] = sum(c["files_scanned"] for c in parts)
+    out["roots_scanned"] = sorted({r for c in parts for r in c["roots_scanned"]})
+    out["unreadable_paths"] = sorted({r for c in parts for r in c["unreadable_paths"]})
+    seen = sorted({r for c in parts for r in c["requests_matched"]})
+    out["requests_matched"] = seen
+    out["requests_with_files"] = len(seen)
+    missing = set(by_request) - set(seen)
+    out["requests_missing_no_path_in_csv"] = sorted(
+        r for r in missing if not by_request[r].get("csv_flowcell_paths"))
+    out["requests_missing_path_but_absent"] = sorted(
+        missing - set(out["requests_missing_no_path_in_csv"]))
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--inventory", default=str(INVENTORY))
+    ap.add_argument("--inventory", action="append", default=[],
+                    help="inventory to index (repeatable; default knowledge/inventory.jsonl). "
+                         "Several in one run share one store read and one rollup.")
     ap.add_argument("--dry-run", action="store_true",
                     help="classify and summarise without writing to the knowledge store")
     ap.add_argument("--run-id", default="")
     args = ap.parse_args()
+    inventories = args.inventory or [str(INVENTORY)]
 
-    scan_meta, files = read_inventory(Path(args.inventory))
     by_request, flowcell_to_request = load_requests()
     vocab = Vocab.load()
+    mice = MouseLines.load()
+    stamp = vocab.version + ("+lines:" + mice.version if mice else "")
     run_id = args.run_id or kb.new_run_id()
-    collection = scan_meta.get("collection_id", "unknown")
 
-    print("requests: {} | flowcell keys: {} | vocab v{}".format(
-        len(by_request), len(flowcell_to_request), vocab.version))
-    print("inventory: {} files from {}".format(len(files), args.inventory))
+    print("requests: {} | flowcell keys: {} | vocab v{} | mouse lines: {}".format(
+        len(by_request), len(flowcell_to_request), vocab.version,
+        len(mice.lines) if mice else "none"))
 
-    files, fold = collapse_instrument_bundles(files, vocab)
-    if fold["bundles_created"]:
-        print("bundled: {} instrument sessions absorbed {} per-channel files "
-              "({} -> {} records)".format(
-                  fold["bundles_created"], fold["files_folded"],
-                  fold["records_before"], fold["records_after"]))
+    live = kb.current_fingerprints() if not args.dry_run else {}
+    coverages: List[dict] = []
+    for inv in inventories:
+        scan_meta, files = read_inventory(Path(inv))
+        collection = scan_meta.get("collection_id", "unknown")
+        print("inventory: {} files from {}".format(len(files), inv))
 
-    verdicts = [classify(f, by_request, flowcell_to_request, vocab) for f in files]
+        files, zfold, zarr_members = collapse_zarr_stores(files)
+        if zfold["stores"]:
+            print("bundled: {} zarr stores absorbed {} chunk files".format(
+                zfold["stores"], zfold["files_folded"]))
+        files, fold = collapse_instrument_bundles(files, vocab)
+        if fold["bundles_created"]:
+            print("bundled: {} instrument sessions absorbed {} per-channel files "
+                  "({} -> {} records)".format(
+                      fold["bundles_created"], fold["files_folded"],
+                      fold["records_before"], fold["records_after"]))
 
+        verdicts = [classify(f, by_request, flowcell_to_request, vocab, mice) for f in files]
+
+        if not args.dry_run:
+            written = 0
+            with kb.BulkAppender() as out:
+                for entry, verdict in zip(files, verdicts):
+                    key = kb.file_key(collection, entry["path"])
+                    prior = live.get(key)
+                    sig = kb.terms_signature(verdict["metadata"])
+                    # Skip a rewrite when nothing changed, so the log records real
+                    # transitions instead of one duplicate per scan.
+                    if prior and prior[0] == verdict["tier"] and prior[1] == verdict["source"] \
+                            and abs(prior[2] - verdict["confidence"]) < 1e-6 and prior[4] == sig:
+                        continue
+                    rec = out.add(kb.build_association(
+                        collection_id=collection,
+                        path=entry["path"],
+                        tier=verdict["tier"],
+                        source=verdict["source"],
+                        metadata=verdict["metadata"],
+                        confidence=verdict["confidence"],
+                        evidence=verdict["evidence"],
+                        stat={"size": entry.get("size", 0),
+                              "last_modified": entry.get("last_modified", "")},
+                        run_id=run_id,
+                        vocab_version=stamp,
+                        supersedes=prior[3] if prior else None,
+                    ))
+                    live[key] = (rec["tier"], rec["source"], rec["confidence"],
+                                 rec["record_id"], sig)
+                    written += 1
+
+                # Retire zarr chunks that an earlier index recorded one by one.
+                # Append only: each gets a superseding 'bundled' record naming its store.
+                retired = 0
+                for member, root in zarr_members:
+                    key = kb.file_key(collection, member)
+                    prior = live.get(key)
+                    if not prior or prior[0] == "bundled":
+                        continue
+                    rec = out.add(kb.build_association(
+                        collection_id=collection, path=member, tier="bundled", source="bundle_fold",
+                        metadata={"bundled_into": root, "bundle_label": "Zarr array store"},
+                        confidence=1.0, evidence={"reason": "member of a zarr store, now one record"},
+                        stat={}, run_id=run_id, vocab_version=stamp, supersedes=prior[3]))
+                    live[key] = ("bundled", "bundle_fold", 1.0, rec.get("record_id", ""), prior[4])
+                    retired += 1
+            print("associations written: {} (unchanged skipped)".format(written))
+            if retired:
+                print("retired: {} chunk records now represented by their zarr store".format(retired))
+
+        cov = build_coverage(files, verdicts, by_request, scan_meta)
+        coverages.append(cov)
+        print("tiers: {}".format(cov["files_by_tier"]))
+
+    coverage = merge_coverage(coverages, by_request)
     if not args.dry_run:
-        live = kb.current_fingerprints()
-        written = 0
-        for entry, verdict in zip(files, verdicts):
-            key = kb.file_key(collection, entry["path"])
-            prior = live.get(key)
-            # Skip a rewrite when nothing changed, so the log records real
-            # transitions instead of one duplicate per scan.
-            if prior and prior[0] == verdict["tier"] and prior[1] == verdict["source"] \
-                    and abs(prior[2] - verdict["confidence"]) < 1e-6:
-                continue
-            kb.append_association(
-                collection_id=collection,
-                path=entry["path"],
-                tier=verdict["tier"],
-                source=verdict["source"],
-                metadata=verdict["metadata"],
-                confidence=verdict["confidence"],
-                evidence=verdict["evidence"],
-                stat={"size": entry.get("size", 0),
-                      "last_modified": entry.get("last_modified", "")},
-                run_id=run_id,
-                vocab_version=vocab.version,
-                supersedes=prior[3] if prior else None,
-            )
-            written += 1
-        print("associations written: {} (unchanged skipped)".format(written))
         import rollup
         rollup.build()
         print("rollup -> {}".format(kb.ROLLUP))
-
-    coverage = build_coverage(files, verdicts, by_request, scan_meta)
-    if not args.dry_run:
         COVERAGE.parent.mkdir(parents=True, exist_ok=True)
         COVERAGE.write_text(json.dumps(coverage, indent=2), encoding="utf-8")
         print("coverage -> {}".format(COVERAGE))

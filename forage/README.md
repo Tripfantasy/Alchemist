@@ -127,6 +127,27 @@ Follow `workflows/data_discovery.md`. In short:
 Then read `candidates.json`, apply judgment, and write the report from
 `resources/report_template.md` into `output/`.
 
+## Mouse lines from the colony list
+
+Folder names often carry the genotype (`20230405_SstCre_Ai14_DTA_cortex`).
+Given the lab's colony spreadsheet(s), forage reads those names as mouse lines:
+what each line is (Cre driver, reporter, calcium indicator ...), the gene it
+targets, and whether the lab still keeps it. A search for a target gene then
+finds data filed only under the line's nickname.
+
+```bash
+# colony CSVs in resources/colony/ (gitignored); columns are found by keyword
+./.venv/bin/python scripts/mouse_lines.py build resources/colony/*.csv --extra resources/colony/aliases.json
+./.venv/bin/python scripts/mouse_lines.py probe knowledge/inventory.jsonl   # check precision first
+./.venv/bin/python scripts/build_index.py --inventory knowledge/inventory.jsonl
+```
+
+Matching is strict: a name matches only as a whole allele at a token boundary,
+and names too short to be specific are refused. Bare `E9` is far more often
+embryonic day 9 than a line, and `Sox10` alone is usually an antibody stain.
+Columns naming people are never read. A line match is still a reading of a
+folder name, so it lifts a file to `inferred`, never higher.
+
 ## Looking inside .zip archives
 
 A scan sees a `.zip` as one file, so whatever is inside it never matches a
@@ -256,6 +277,7 @@ reads the permission list instead: same answer, no side effects.
 | `scripts/build_index.py` | CSV join + vocabulary inference → associations |
 | `scripts/search.py` | lexical recall over the store → ranked candidates |
 | `scripts/kb.py` | the only writer to `knowledge/`; supersession + fingerprints |
+| `scripts/mouse_lines.py` | colony CSV(s) → `mouse_lines.json` registry; strict genotype matching; `probe` checks precision |
 | `scripts/export_snapshot.py` | aggregated, schema-versioned export → `knowledge/snapshot.json`, read by `sigil` |
 | `scripts/rollup.py` | bounded summary → `knowledge/ASSOCIATIONS.md` |
 | `scripts/make_mock_inventory.py` | synthetic tree for testing without Globus |
@@ -264,6 +286,7 @@ reads the permission list instead: same answer, no side effects.
 | `resources/vocab.example.json` | starter term dictionary for path inference; copy to `vocab.json` (gitignored) and grow it from your collection |
 | `resources/site.example.json` | your core's request-ID format (default `REQ-####`); copy to `site.json` (gitignored) |
 | `resources/metadata_example.csv` | 40 synthetic requests; replaced by `metadata.csv` (gitignored) if you supply one |
+| `resources/mouse_lines.example.json` | example mouse-line registry; replaced by `mouse_lines.json` (gitignored), built from your colony list |
 | `resources/project_codes.example.json` | optional code → project-name map; replaced by `project_codes.json` (gitignored) |
 | `workflows/data_discovery.md` | **the recipe — single source of truth** |
 | `.claude/commands/forage.md` | `/forage` slash command |

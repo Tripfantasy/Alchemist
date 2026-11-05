@@ -87,6 +87,8 @@ def build() -> Path:
             if not key or rec.get("record_id") != wanted.get(key):
                 continue
             tier = rec.get("tier", "unknown")
+            if tier == "bundled":       # folded into a bundle record; not a file in its own right
+                continue
             size = int(rec.get("stat", {}).get("size", 0) or 0)
             meta = rec.get("metadata", {})
             path = rec.get("path", "")

@@ -302,8 +302,24 @@ def aggregate(snap: dict, fam: Families, top: int, site: "SiteRules") -> dict:
         "questions": len(runs),
         "archives_opened": opened,
         "archives_total": opened + unopened,
+        "archives_minor": cov.get("archives_minor", {}),
+        "archive_min_mb": (cov.get("archive_rule") or {}).get("min_mb"),
         "tree": build_tree(units),
         "growth": growth,
+    }
+
+    # -- mouse lines named in folder names (snapshot schema 2), by named folder
+    ml = snap.get("mouse_lines") or {}
+    ranked = sorted((ml.get("lines") or {}).items(), key=lambda kv: (-kv[1]["folders"], kv[0].lower()))
+    mouse = {
+        "classes": ml.get("classes", []),
+        "status_labels": ml.get("status_labels", {}),
+        "registered": ml.get("registered", 0),
+        "named": len(ranked),
+        "cloud": [{"t": name, "cls": l["class"], "n": l["folders"], "files": l["files"],
+                   "status": l["status"], "public": l["public"], "target": l["target"],
+                   "official": l["official"], "with": list(l["with"])[:5], "eg": l["eg"]}
+                  for name, l in ranked[:CLOUD_TERMS]],
     }
 
     # Only tissues some folder pairs with a stage or timepoint: a row of empty
@@ -345,6 +361,7 @@ def aggregate(snap: dict, fam: Families, top: int, site: "SiteRules") -> dict:
             "languages": lang_units.most_common(),
         },
         "exploration": exploration,
+        "mouse": mouse,
         "unmatched": {k: v.most_common(25) for k, v in unmatched.items()},
         "ungrouped_themes": ungrouped,
     }
@@ -371,6 +388,16 @@ def redact(agg: dict, hide_themes, min_theme: int) -> dict:
         row_totals[rename[t]] += n
     rows = keep + ([OTHER] if OTHER in row_totals else [])
 
+    # Mouse lines: only those a collaborator could obtain (a public repository
+    # stock). In-house and unpublished lines stay in the internal edition.
+    m = agg.get("mouse") or {}
+    public = [w for w in m.get("cloud", []) if w["public"]]
+    names = {w["t"] for w in public}
+    mouse = dict(m, cloud=[dict({k2: v for k2, v in w.items() if k2 != "eg"},
+                                **{"with": [x for x in w["with"] if x in names]}) for w in public])
+    mouse.pop("named", None)
+    mouse.pop("registered", None)
+
     k = {key: v for key, v in agg["kpis"].items() if key != "files"}
     k["themes"] = len(keep)
     return {
@@ -382,6 +409,7 @@ def redact(agg: dict, hide_themes, min_theme: int) -> dict:
         "methods": agg["methods"],
         "focus": agg["focus"],
         "toolkit": agg["toolkit"],
+        "mouse": mouse,
         "redacted": True,
     }
 
@@ -445,8 +473,9 @@ def main() -> None:
         sys.exit("no snapshot at {}\nRun forage first:  cd ../forage && "
                  "./.venv/bin/python scripts/export_snapshot.py".format(snap_path))
     snap = json.loads(snap_path.read_text(encoding="utf-8"))
-    if snap.get("kind") != "forage_snapshot" or snap.get("schema") != 1:
-        sys.exit("{} is not a schema-1 forage snapshot".format(snap_path))
+    # Schema 2 only added `mouse_lines`; a schema-1 snapshot simply has none.
+    if snap.get("kind") != "forage_snapshot" or snap.get("schema") not in (1, 2):
+        sys.exit("{} is not a schema-1 or schema-2 forage snapshot".format(snap_path))
 
     lab = load_lab(args)
     site = SiteRules(json.loads(LAB_FILE.read_text(encoding="utf-8")) if LAB_FILE.exists() else {})
