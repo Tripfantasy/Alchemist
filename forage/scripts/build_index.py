@@ -654,6 +654,18 @@ def main() -> None:
         COVERAGE.parent.mkdir(parents=True, exist_ok=True)
         COVERAGE.write_text(json.dumps(coverage, indent=2), encoding="utf-8")
         print("coverage -> {}".format(COVERAGE))
+        # coverage.json is rebuilt from THIS run's inventories only. Indexing a
+        # few new ones leaves the store complete but the coverage partial, and
+        # the snapshot's request counts drop with it. Say so loudly.
+        given = {Path(p).resolve() for p in inventories}
+        left = [p.name for p in sorted(kb.KB_DIR.glob("inventory*.jsonl"))
+                if ".mock" not in p.name and p.resolve() not in given]
+        if left:
+            print("WARNING: coverage.json covers {} of {} inventories in {}; {} were "
+                  "not passed ({}{}). Re-run with every --inventory for full "
+                  "coverage before exporting a snapshot.".format(
+                      len(given), len(given) + len(left), kb.KB_DIR.name, len(left),
+                      ", ".join(left[:3]), ", ..." if len(left) > 3 else ""))
 
     print("\ntiers: {}".format(coverage["files_by_tier"]))
     print("requests with files on endpoint: {}/{}".format(
