@@ -85,8 +85,11 @@ def unit_of(path: str, depth: int) -> str:
     """
     outer, marker, inner = path.partition(ZIP_SEP)
     if marker:
-        top = [s for s in inner.split("/") if s][:1]
-        return outer + ".zip" + SEP + "/".join(top)
+        # Directories only: a member at the archive's root belongs to the
+        # archive itself, as a loose file belongs to its folder. Otherwise an
+        # ROI set of 20k top-level members becomes 20k "project folders".
+        top = [s for s in inner.split("/") if s][:-1][:1]
+        return outer + ".zip" + (SEP + top[0] if top else "")
     segs = [s for s in outer.split("/") if s]
     return "/" + "/".join(segs[:-1][:depth]) if len(segs) > 1 else "/"
 
