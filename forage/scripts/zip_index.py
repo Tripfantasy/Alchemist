@@ -40,15 +40,23 @@ Usage
       --zip /core_archives/secondary_part2.zip \
       --out knowledge/inventory_zip_core.jsonl
 
+  # Local archives (from a scan_local.py inventory): no Globus, no network
+  ./.venv/bin/python scripts/zip_index.py --local \
+      --zip /mnt/lab/core_archives/secondary_part1.zip \
+      --out knowledge/inventory_zip_core.jsonl
+
   Then index it like any scan:
   ./.venv/bin/python scripts/build_index.py --inventory knowledge/inventory_zip_core.jsonl
 
-Confidential-client mode only: the HTTPS token comes from client credentials.
+Collection mode is confidential-client only: the HTTPS token comes from client
+credentials. --local opens each archive 'rb' and reads the same central
+directory from disk; it needs no credentials.
 """
 
 import argparse
 import io
 import json
+import os
 import sys
 import urllib.parse
 import zipfile
@@ -63,6 +71,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kb  # noqa: E402
 from globus_auth import client_id, client_secret, ensure_consent, get_transfer_client  # noqa: E402
 from scan_endpoint import ReadOnlyTransferClient  # noqa: E402
+import scan_local  # noqa: E402
 
 SEP = "!/"
 
@@ -173,11 +182,41 @@ def https_client(collection_id: str) -> ReadOnlyHTTPS:
     return ReadOnlyHTTPS(server, tokens.by_resource_server[collection_id]["access_token"])
 
 
-def members(http: ReadOnlyHTTPS, zip_path: str, cap_bytes: int) -> Iterator[dict]:
-    rf = RangeFile(http, zip_path, cap_bytes)
+def remote_opener(http: ReadOnlyHTTPS, cap_bytes: int):
+    def open_(zip_path: str):
+        rf = RangeFile(http, zip_path, cap_bytes)
+        return (io.BufferedReader(rf, buffer_size=1 << 16),
+                lambda: "read {:,} bytes in {} request(s) of a {:,}-byte archive".format(
+                    rf.bytes_read, rf.requests, rf.size))
+    return open_
+
+
+def local_opener():
+    """Local archives, opened 'rb'. zipfile reads the central directory only."""
+    def open_(zip_path: str):
+        size = os.path.getsize(zip_path)
+        fh = open(zip_path, "rb")
+        return fh, lambda: "local, {:,}-byte archive".format(size)
+    return open_
+
+
+def members(zip_path: str, open_) -> Iterator[dict]:
     try:
-        zf = zipfile.ZipFile(io.BufferedReader(rf, buffer_size=1 << 16))
-    except (zipfile.BadZipFile, ReadCapExceeded, RuntimeError,
+        fh, describe = open_(zip_path)
+    except (ReadCapExceeded, RuntimeError, OSError, requests.RequestException) as err:
+        yield {"kind": "error", "path": zip_path,
+               "code": type(err).__name__, "message": str(err)[:300]}
+        return
+    try:
+        yield from _members(zip_path, fh, describe)
+    finally:
+        fh.close()
+
+
+def _members(zip_path: str, fh, describe) -> Iterator[dict]:
+    try:
+        zf = zipfile.ZipFile(fh)
+    except (zipfile.BadZipFile, ReadCapExceeded, RuntimeError, OSError,
             requests.RequestException) as err:
         yield {"kind": "error", "path": zip_path,
                "code": type(err).__name__, "message": str(err)[:300]}
@@ -211,9 +250,8 @@ def members(http: ReadOnlyHTTPS, zip_path: str, cap_bytes: int) -> Iterator[dict
             "archive": zip_path,
             "anchors": kb.extract_anchors(full),
         }
-    print("zip: {} | {:,} files, {:,} dirs | read {:,} bytes in {} request(s) "
-          "of a {:,}-byte archive".format(zip_path, n_files, n_dirs, rf.bytes_read,
-                                          rf.requests, rf.size), flush=True)
+    print("zip: {} | {:,} files, {:,} dirs | {}".format(
+        zip_path, n_files, n_dirs, describe()), flush=True)
 
 
 def find_archives(inventory: str, folders: List[str]) -> None:
@@ -242,7 +280,16 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("collection", nargs="?",
-                    help="collection UUID (pass $GLOBUS_AGENT_COLLECTION_ID); not needed with --find")
+                    help="collection UUID (pass $GLOBUS_AGENT_COLLECTION_ID); not "
+                         "needed with --find or --local")
+    ap.add_argument("--local", action="store_true",
+                    help="archives are local paths (scan_local.py inventories); "
+                         "no Globus, no network")
+    ap.add_argument("--label", default=None,
+                    help="with --local: collection_id to record; must match the "
+                         "scan's (default: scan_local's default)")
+    ap.add_argument("--allow-writable", action="store_true",
+                    help="with --local: as for scan_local.py")
     ap.add_argument("--find", metavar="INVENTORY",
                     help="local only: list the .zip archives in an inventory and exit")
     ap.add_argument("--folder", action="append", default=[],
@@ -257,23 +304,35 @@ def main() -> None:
     if args.find:
         find_archives(args.find, args.folder)
         return
-    if not (args.collection and args.zip and args.out):
-        ap.error("listing archives needs: collection, --zip (one or more), --out")
+    if not ((args.collection or args.local) and args.zip and args.out):
+        ap.error("listing archives needs: collection (or --local), --zip (one or "
+                 "more), --out")
 
     zips: List[str] = args.zip
     bad = [z for z in zips if not z.lower().endswith(".zip")]
     if bad:
         sys.exit("not .zip archives: {}".format(", ".join(bad)))
 
-    http = https_client(args.collection)
+    if args.local:
+        try:
+            scan_local.guard(sorted({os.path.dirname(z) + "/" for z in zips}),
+                             args.allow_writable)
+        except scan_local.WritableRoot as err:
+            sys.exit("REFUSED  " + str(err))
+        open_ = local_opener()
+        collection = args.label or scan_local.default_label()
+    else:
+        open_ = remote_opener(https_client(args.collection), args.max_index_mb << 20)
+        collection = args.collection
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     header = {
         "kind": "scan_meta",
         "source": "zip_central_directory",
+        "backend": "local" if args.local else "globus",
         "ts": kb.utc_now(),
         "run_id": kb.new_run_id(),
-        "collection_id": args.collection,
+        "collection_id": collection,
         "roots": zips,
         "depth": None,
         "types": [],
@@ -282,7 +341,7 @@ def main() -> None:
     with out.open("w", encoding="utf-8") as fh:
         fh.write(json.dumps(header, sort_keys=True) + "\n")
         for z in zips:
-            for rec in members(http, z, args.max_index_mb << 20):
+            for rec in members(z, open_):
                 if rec["kind"] == "error":
                     print("zip: {} UNREADABLE -- {}: {}".format(
                         z, rec["code"], rec["message"]), flush=True)

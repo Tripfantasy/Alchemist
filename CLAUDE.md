@@ -6,7 +6,7 @@ This is the router level. Four self-contained agents live below it:
 | --- | --- | --- |
 | `distill/` | `/distill <topic>` | Researching a topic from the literature |
 | `brew/` | `/brew <paper>` | Reproducing a specific paper's methods |
-| `forage/` | `/forage <goal>` | Finding data already on a Globus collection (`--quick` for a judged file list, no report) |
+| `forage/` | `/forage <goal>` | Finding data already on a Globus collection or local path (`--quick` for a judged file list, no report) |
 | `sigil/` | `/sigil` | A digestible profile of the lab's work, with an interactive dashboard, built from forage's knowledge |
 
 # Your job at this level

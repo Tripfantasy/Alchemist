@@ -6,7 +6,7 @@ Claude-based agentic framework for expediting research lab tasks. Generate actio
 | --- | --- | --- | --- |
 | [distill/](distill/) | `/distill <topic>` | A topic | Cited research report with recommendations |
 | [brew/](brew/) | `/brew <paper>` | A paper (URL, DOI, or PDF) | Reproduction protocol, an analysis notebook, and a list of what the paper fails to document |
-| [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
+| [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection or a local/mounted path, plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
 | [sigil/](sigil/) | `/sigil` | Nothing (optionally, what to emphasize) | A digestible lab profile (.md + .pdf) and an interactive dashboard (.html), in internal and collaborator editions, built from forage's knowledge |
 
 Each agent's command is named after the agent. You can also just describe what
@@ -176,6 +176,14 @@ To use your own data, add:
 | `CLAUDE.local.md` | Optional site notes for the agent: collection facts and local lessons. Loaded automatically. |
 
 All of these are gitignored.
+
+### Use local data instead
+
+If the data is already on a local or mounted path, set `local_roots` in
+`resources/site.json` and skip Globus entirely: no credentials, and a scan
+takes minutes instead of hours. Mount it read-only where you can; forage
+refuses to scan a root your account can write to unless you approve it.
+Details are in [forage/README.md](forage/README.md#local-data-instead-of-globus).
 
 ### Connect to a real collection
 

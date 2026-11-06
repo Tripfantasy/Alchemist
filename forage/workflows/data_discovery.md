@@ -19,6 +19,33 @@ Before the first scan against a new collection, run:
 ./.venv/bin/python scripts/verify_readonly.py <COLLECTION_UUID>
 ```
 
+### Two backends: Globus or a local path
+
+The data is reached one of two ways. `resources/site.json` decides which:
+
+| `site.json` | Backend | Scanner | Archive listing |
+| --- | --- | --- | --- |
+| no `local_roots` (the default) | Globus collection | `scan_endpoint.py <COLLECTION_UUID>` | `zip_index.py "$GLOBUS_AGENT_COLLECTION_ID"` |
+| `local_roots` set | local or mounted directories | `scan_local.py` | `zip_index.py --local` |
+
+Read it once at the start (`kb.SITE.get("local_roots")`) and use that
+backend's commands throughout. Every other step is the same either way: both
+scanners write the same inventory format.
+
+The read-only rule is the same on a local path; only what enforces it differs.
+No server rejects a write, so the binding layer is how the data is mounted: a
+read-only mount, or an account that can only read it. `scan_local.py` checks
+this and **refuses** a root this account could write to. Then:
+
+- Run `./.venv/bin/python scripts/scan_local.py --check` to show the
+  researcher which roots are writable.
+- Recommend a read-only mount (or bind mount) over going ahead.
+- Pass `--allow-writable` only after the researcher approves it in this
+  session. Never pass it to get past a refusal on your own.
+
+A local walk takes minutes where a Globus walk takes hours, but Steps 2 and 2a
+still apply: scoping is about what the researcher's goal needs, not only cost.
+
 ---
 
 ## Two modes
@@ -29,7 +56,7 @@ run.
 | | Full run | `--quick` |
 | --- | --- | --- |
 | Intake | 3–4 questions (Step 1) | at most one (Step 1q) |
-| Talks to Globus | yes, after Step 2a scoping | **never** |
+| Walks the collection or local tree | yes, after Step 2a scoping | **never** |
 | Judging | yes (Step 6) | yes (Step 6q) — same cut, no prose |
 | Deliverable | `.md` + `.pdf` in `output/` | chat only |
 | Gaps | four failure modes (Step 7) | one scope line |
@@ -208,6 +235,9 @@ the tree first — this costs seconds, not hours:
 ./.venv/bin/python scripts/scan_endpoint.py <COLLECTION_UUID> \
     --path / --depth 2 \
     --out knowledge/survey.jsonl
+
+# local backend: with no --path, scans the site.json local_roots
+./.venv/bin/python scripts/scan_local.py --depth 2 --out knowledge/survey.jsonl
 ```
 
 Depth 2 is the useful setting: depth 1 gives bare directory names that mean
@@ -246,6 +276,13 @@ Rules for this round:
 ```bash
 ./.venv/bin/python scripts/scan_endpoint.py <COLLECTION_UUID> \
     --path /projects/ --path /proteomics/ \
+    --depth 5 \
+    --exclude /backup/ \
+    --out knowledge/inventory.jsonl
+
+# local backend: same options, absolute paths inside local_roots
+./.venv/bin/python scripts/scan_local.py \
+    --path /mnt/lab/projects/ --path /mnt/lab/proteomics/ \
     --depth 5 \
     --exclude /backup/ \
     --out knowledge/inventory.jsonl
@@ -318,7 +355,15 @@ researcher with their real size and date, and ask which to look inside. Use one
 ./.venv/bin/python scripts/zip_index.py "$GLOBUS_AGENT_COLLECTION_ID" \
     --zip /path/a.zip --zip /path/b.zip \
     --out knowledge/inventory_zip_<name>.jsonl
+
+# local backend: reads each zip's index from disk, no network
+./.venv/bin/python scripts/zip_index.py --local \
+    --zip /mnt/lab/archives/a.zip \
+    --out knowledge/inventory_zip_<name>.jsonl
 ```
+
+The ask is the same on the local backend. Listing is cheaper still, but the
+researcher decides which archives to open, and extracting stays their job.
 
 Then index (Step 4) and search (Step 5) the new inventory.
 - Paths come out as `<archive>.zip!/<member>`. Index the file like any

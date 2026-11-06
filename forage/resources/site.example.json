@@ -6,7 +6,9 @@
     "request_id.format: rebuilds the canonical ID from that number.",
     "request_id.csv_column: the metadata.csv column holding the request ID.",
     "project_code_regex: group 1 is an internal project code inside 'Scientific Projects'.",
-    "legacy_anchor_keys: optional. Older anchor key names to keep reading in an existing store."
+    "legacy_anchor_keys: optional. Older anchor key names to keep reading in an existing store.",
+    "local_roots: optional. Local or mounted directories to scan with scan_local.py instead of a Globus collection. Empty or absent means Globus.",
+    "local_label: optional. collection_id recorded for local scans (default local:<hostname>). Keep it stable; it is part of every file_key."
   ],
   "request_id": {
     "regex": "REQ[-_]?(\\d{3,5})",
@@ -14,5 +16,6 @@
     "csv_column": "Request #"
   },
   "project_code_regex": "(PRJ-\\d{6})",
-  "legacy_anchor_keys": []
+  "legacy_anchor_keys": [],
+  "local_roots": ["/mnt/lab"]
 }

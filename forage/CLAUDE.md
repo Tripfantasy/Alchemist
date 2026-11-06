@@ -17,7 +17,7 @@ I am a bioinformatician working in a neuroscience department. I have a vested in
 - Every report ships as BOTH .md and .pdf. Write the .md, then run
   `./.venv/bin/python scripts/render_report.py output/<name>.md`. The .md is the source of
   truth; the .pdf is derived - never hand-edit it, regenerate it.
-- Only read the files in the globus directories, NEVER edit, move, or copy files under any circumstances. 
+- Only read the files in the globus directories, NEVER edit, move, or copy files under any circumstances. The same holds for local roots (see Local Filesystem Access).
 
 # Site notes
 
@@ -136,6 +136,31 @@ Run scripts/verify_readonly.py instead.
 
 The client secret lives in the macOS Keychain (service
 `globus_agent_client_secret`), never in the repo or in code.
+
+# Local Filesystem Access
+
+When resources/site.json sets `local_roots`, forage reads data from those
+local or mounted directories instead of a Globus collection:
+scripts/scan_local.py replaces scan_endpoint.py, and `zip_index.py --local`
+replaces the HTTPS listing. No credentials are needed. Inventories are the
+same format, so everything from build_index.py onward is unchanged.
+
+The read-only rule applies unchanged. What enforces it differs:
+
+1. The binding layer is the mount: a read-only mount, or an account that can
+   only read. scan_local.py checks every root and REFUSES one this account can
+   write to. `--allow-writable` overrides that only with the researcher's
+   approval, given in the session. Never pass it on your own to get past a
+   refusal. `scan_local.py --check` reports each root's status without walking.
+2. The code backstop: the walk uses only os.scandir and stat, never opening a
+   file; `zip_index.py --local` opens archives 'rb' and reads only their
+   central directory.
+3. Every --path must lie inside `local_roots`, so a mistyped path cannot walk
+   a whole disk.
+
+Local records carry `collection_id` = `local_label` from site.json, else
+`local:<hostname>`. It is part of every file_key, so keep it stable: set
+`local_label` if the same mount is scanned from more than one host.
 
 # Data Notes
 
