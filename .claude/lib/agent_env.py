@@ -52,6 +52,15 @@ def agent_env(agent: str) -> dict[str, str]:
         sys.exit(f"FAIL  {path.relative_to(ROOT)} is not valid JSON: {exc}")
 
 
+def forage_backend() -> str:
+    """'local' only when forage/resources/site.json says so; else 'globus'."""
+    path = ROOT / "forage" / "resources" / "site.json"
+    try:
+        return json.loads(path.read_text()).get("backend", "globus")
+    except (OSError, json.JSONDecodeError):
+        return "globus"
+
+
 def collect() -> dict[str, str]:
     """Union of every agent's env. A same-key conflict is fatal, not resolved.
 
@@ -107,6 +116,13 @@ def cmd_sync() -> int:
 def cmd_check(agent: str) -> int:
     if agent not in AGENTS:
         sys.exit(f"FAIL  unknown agent {agent!r} (expected one of: {', '.join(AGENTS)})")
+
+    if agent == "forage" and forage_backend() == "local":
+        # A site that chose a local directory in /setup never talks to Globus,
+        # so it needs no Globus variables. Globus sites are checked as before.
+        print("OK    forage uses the local backend (site.json); no Globus "
+              "credentials needed")
+        return 0
 
     wanted = agent_env(agent)
     if not wanted:

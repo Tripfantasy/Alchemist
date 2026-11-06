@@ -19,6 +19,12 @@ Before the first scan against a new collection, run:
 ./.venv/bin/python scripts/verify_readonly.py <COLLECTION_UUID>
 ```
 
+**Which backend.** Read `"backend"` in `resources/site.json` once, at the start.
+Absent or `"globus"`: this file applies exactly as written. `"local"` (a site
+that chose a local or mounted directory in `/setup`): read `LOCAL.md` now. It
+replaces the Globus commands at Steps 2a, 3 and 3a and the check above, and
+adds its own read-only rules; every other step here applies unchanged.
+
 ---
 
 ## Two modes

@@ -33,6 +33,9 @@ than this file it wins. Nothing site-specific belongs in this file.
 `globus-discovery` skill triggers. Both route to workflows/data_discovery.md,
 which is the single source of truth - read it, do not work from memory.
 
+A site whose resources/site.json sets `"backend": "local"` (chosen in `/setup`)
+also reads LOCAL.md, which adds local-path rules. It never applies to Globus.
+
 # Environment
 
 - ALWAYS use ./.venv/bin/python, never bare python3. globus-sdk and markdown

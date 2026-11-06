@@ -6,7 +6,7 @@ Claude-based agentic framework for expediting research lab tasks. Generate actio
 | --- | --- | --- | --- |
 | [distill/](distill/) | `/distill <topic>` | A topic | Cited research report with recommendations |
 | [brew/](brew/) | `/brew <paper>` | A paper (URL, DOI, or PDF) | Reproduction protocol, an analysis notebook, and a list of what the paper fails to document |
-| [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
+| [forage/](forage/) | `/forage <goal>` | A research goal | Report listing matching files on a Globus collection or a local/mounted path, plus what they cannot answer, read-only. `--quick` gives the judged file list on screen instead |
 | [sigil/](sigil/) | `/sigil` | Nothing (optionally, what to emphasize) | A digestible lab profile (.md + .pdf) and an interactive dashboard (.html), in internal and collaborator editions, built from forage's knowledge |
 
 Each agent's command is named after the agent. You can also just describe what
@@ -26,6 +26,23 @@ also work from the repo root, which runs the agent in place. See
 **Not sure which one you need?** Start Claude Code at the repo root and run
 `/alchemist <what you're trying to do>`. It picks the agent and gives you the
 command. `/alchemist` itself routes only and does not run the agents.
+
+---
+
+## First-time setup
+
+Open Claude Code at the repo root and run:
+
+```
+/setup
+```
+
+It asks where forage should read data, a **Globus collection** or a **local or
+mounted folder**, and collects sigil's lab details (the lab's focus in your own
+words, its name, the PI). It checks what is already configured and only fills
+the gaps, so re-running it is safe. It never scans and never asks you to paste
+a UUID or secret into the chat. `/forage` and `/sigil` point you here if
+something is missing.
 
 ---
 
@@ -176,6 +193,15 @@ To use your own data, add:
 | `CLAUDE.local.md` | Optional site notes for the agent: collection facts and local lessons. Loaded automatically. |
 
 All of these are gitignored.
+
+### Use local data instead
+
+If the data is already on a local or mounted path (a NAS, a lab server), choose
+**Local or mounted folder** in `/setup`: no Globus credentials, and a scan takes
+minutes instead of hours. forage then reads only inside the directories you
+name, and refuses to scan one your account can write to; mount it read-only
+where you can. The local rules live in [forage/LOCAL.md](forage/LOCAL.md) and
+apply only to a site that chose local. Globus sites are unaffected.
 
 ### Connect to a real collection
 

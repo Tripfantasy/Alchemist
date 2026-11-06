@@ -6,8 +6,13 @@
     "request_id.format: rebuilds the canonical ID from that number.",
     "request_id.csv_column: the metadata.csv column holding the request ID.",
     "project_code_regex: group 1 is an internal project code inside 'Scientific Projects'.",
-    "legacy_anchor_keys: optional. Older anchor key names to keep reading in an existing store."
+    "legacy_anchor_keys: optional. Older anchor key names to keep reading in an existing store.",
+    "backend: 'globus' (default; also when absent) or 'local'. /setup writes it. Only 'local' enables scan_local.py and LOCAL.md.",
+    "local_roots: local backend only. Directories forage may read; every scan path must lie inside one.",
+    "local_label: local backend only, optional. collection_id recorded for local scans (default local:<hostname>). Keep it stable."
   ],
+  "backend": "globus",
+  "local_roots": [],
   "request_id": {
     "regex": "REQ[-_]?(\\d{3,5})",
     "format": "REQ-{}",
