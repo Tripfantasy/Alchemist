@@ -78,6 +78,10 @@ The short version:
 - Route a request, and explain what the chosen agent will do and ask.
 - Run an agent in place via `/forage`, `/brew`, `/distill` or `/sigil`, following
   `.claude/lib/delegate.md` exactly.
+- Run first-time configuration via `/setup` (`.claude/commands/setup.md`):
+  forage's data source (Globus or a local folder) and sigil's lab details. It
+  configures only, never scans. If a session here finds nothing configured
+  (`python3 .claude/lib/setup.py status` exits non-zero), offer `/setup` first.
 - Explain the repo: layout, setup, what each agent produces, its limitations.
 - Repo-wide maintenance: `.gitignore`, the root `README.md`, git operations.
 - Edit an agent's own files when asked to change that agent - that is

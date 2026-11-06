@@ -29,6 +29,23 @@ command. `/alchemist` itself routes only and does not run the agents.
 
 ---
 
+## First-time setup
+
+Open Claude Code at the repo root and run:
+
+```
+/setup
+```
+
+It asks where forage should read data, a **Globus collection** or a **local or
+mounted folder**, and collects sigil's lab details (the lab's focus in your own
+words, its name, the PI). It checks what is already configured and only fills
+the gaps, so re-running it is safe. It never scans and never asks you to paste
+a UUID or secret into the chat. `/forage` and `/sigil` point you here if
+something is missing.
+
+---
+
 ## Requirements
 
 - [Claude Code](https://claude.com/claude-code)
@@ -179,11 +196,12 @@ All of these are gitignored.
 
 ### Use local data instead
 
-If the data is already on a local or mounted path, set `local_roots` in
-`resources/site.json` and skip Globus entirely: no credentials, and a scan
-takes minutes instead of hours. Mount it read-only where you can; forage
-refuses to scan a root your account can write to unless you approve it.
-Details are in [forage/README.md](forage/README.md#local-data-instead-of-globus).
+If the data is already on a local or mounted path (a NAS, a lab server), choose
+**Local or mounted folder** in `/setup`: no Globus credentials, and a scan takes
+minutes instead of hours. forage then reads only inside the directories you
+name, and refuses to scan one your account can write to; mount it read-only
+where you can. The local rules live in [forage/LOCAL.md](forage/LOCAL.md) and
+apply only to a site that chose local. Globus sites are unaffected.
 
 ### Connect to a real collection
 

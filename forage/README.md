@@ -16,18 +16,22 @@ pip install -r requirements.txt
 
 ### Local data instead of Globus
 
-If the data is already reachable as a path (a NAS mount, a lab server), skip
-the Globus credentials below. List the directories in `resources/site.json`:
+If the data is already reachable as a path (a NAS mount, a lab server), run
+`/setup` from the repo root and choose **Local or mounted folder**. It writes
+`"backend": "local"` and your `local_roots` to `resources/site.json`:
 
 ```json
+"backend": "local",
 "local_roots": ["/mnt/lab/"]
 ```
 
-`scripts/scan_local.py` then replaces `scan_endpoint.py`, and
-`zip_index.py --local` lists archives from disk. Both write the same inventory
+`scripts/scan_local.py` then replaces `scan_endpoint.py` for walks, and
+`scan_local.py --zip` lists archives from disk. Both write the same inventory
 format, so indexing, search, reports and sigil's snapshot work unchanged.
+Without `"backend": "local"`, `scan_local.py` refuses to run, and the Globus
+scripts never load it.
 
-Read-only still holds, but nothing on a local path enforces it except how the
+Read-only still holds, but on a local path nothing enforces it except how the
 data is mounted. Mount it read-only where you can:
 
 ```bash
@@ -36,7 +40,8 @@ sudo mount --bind /data/lab /mnt/lab && sudo mount -o remount,bind,ro /mnt/lab
 ```
 
 `scan_local.py` refuses a root your account can write to. `--allow-writable`
-overrides that; in a `/forage` run the agent asks you before passing it.
+overrides that, exists only in this script, and in a `/forage` run the agent
+asks you before passing it. The full rules are in [LOCAL.md](LOCAL.md).
 
 ### Credentials (one time)
 
@@ -298,8 +303,8 @@ reads the permission list instead: same answer, no side effects.
 | --- | --- |
 | `scripts/globus_auth.py` | confidential-client auth (Keychain secret), Native App fallback |
 | `scripts/scan_endpoint.py` | recursive read-only walk → `inventory.jsonl` |
-| `scripts/scan_local.py` | the same walk over local `local_roots`; refuses writable roots unless approved |
-| `scripts/zip_index.py` | `.zip` contents via HTTPS range reads of the central directory → inventory; `--local` reads it from disk; `--find` lists archives in scope locally |
+| `scripts/scan_local.py` | local backend only: the same walk over `local_roots`, and `--zip` archive listing from disk; refuses writable roots unless approved |
+| `scripts/zip_index.py` | `.zip` contents via HTTPS range reads of the central directory → inventory; `--find` lists archives in scope locally |
 | `scripts/build_index.py` | CSV join + vocabulary inference → associations |
 | `scripts/search.py` | lexical recall over the store → ranked candidates |
 | `scripts/kb.py` | the only writer to `knowledge/`; supersession + fingerprints |
@@ -310,7 +315,7 @@ reads the permission list instead: same answer, no side effects.
 | `scripts/render_report.py` | markdown report -> print-quality PDF |
 | `scripts/verify_readonly.py` | proves read-only without writing anything |
 | `resources/vocab.example.json` | starter term dictionary for path inference; copy to `vocab.json` (gitignored) and grow it from your collection |
-| `resources/site.example.json` | your core's request-ID format (default `REQ-####`) and optional `local_roots`; copy to `site.json` (gitignored) |
+| `resources/site.example.json` | your core's request-ID format (default `REQ-####`) and the backend (`globus` or `local`, set by `/setup`); copy to `site.json` (gitignored) |
 | `resources/metadata_example.csv` | 40 synthetic requests; replaced by `metadata.csv` (gitignored) if you supply one |
 | `resources/mouse_lines.example.json` | example mouse-line registry; replaced by `mouse_lines.json` (gitignored), built from your colony list |
 | `resources/project_codes.example.json` | optional code → project-name map; replaced by `project_codes.json` (gitignored) |

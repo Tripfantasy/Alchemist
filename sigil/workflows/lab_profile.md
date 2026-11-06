@@ -94,7 +94,9 @@ the lab (one scanned folder, say), say so and hand back the `/forage` command.
 
 `resources/lab.json` (gitignored) holds the lab's display name, a short
 description in the researcher's own words, and the PI's identifiers for the
-publications list. It opens both the dashboard and the profile.
+publications list. It opens both the dashboard and the profile. `/setup` at
+the repo root asks the same four questions and writes the same shape, so on a
+site that ran it this file already exists.
 
 - **It does not exist** (the first run): before the intake round, ask in plain
   text, not as a multiple-choice question, because only the researcher can

@@ -18,13 +18,21 @@ could write to unless --allow-writable is passed, which the researcher has to
 approve. What it found is recorded in the scan_meta header.
 
 The backstop is the code itself: the walk uses only os.scandir and stat. It
-never opens a file, not even to read it.
+never opens a file, not even to read it. --zip opens an archive 'rb' and reads
+only its central directory, never member data.
+
+Local mode only
+---------------
+This script runs only when resources/site.json sets "backend": "local" (which
+/setup writes). It refuses otherwise, so a Globus site can never reach it, and
+--allow-writable exists here and nowhere else: no Globus script has it. The
+Globus scripts (scan_endpoint.py, zip_index.py) do not import this file.
 
 Roots
 -----
-If resources/site.json lists `local_roots`, a scan with no --path covers those
-roots, and every --path must lie inside one of them. That keeps a mistyped
-path from walking a whole disk.
+A scan with no --path covers the site.json `local_roots`, and every --path and
+--zip must lie inside one of them. That keeps a mistyped path from walking a
+whole disk.
 
 Usage
 -----
@@ -37,6 +45,10 @@ Usage
   # Scan the agreed scope
   ./.venv/bin/python scripts/scan_local.py --path /mnt/lab/projects/ \
       --depth 5 --exclude /backup/ --out knowledge/inventory.jsonl
+
+  # List what is inside archives (local counterpart of zip_index.py)
+  ./.venv/bin/python scripts/scan_local.py --zip /mnt/lab/archives/a.zip \
+      --out knowledge/inventory_zip_a.jsonl
 """
 
 import argparse
@@ -44,6 +56,7 @@ import json
 import os
 import socket
 import sys
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Set
@@ -56,8 +69,21 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / "knowledge" / "inventory.jsonl"
 
 
+ZIP_SEP = "!/"  # same member separator as zip_index.py
+
+
 class WritableRoot(RuntimeError):
     pass
+
+
+def require_local_backend() -> None:
+    """Refuse unless this site chose the local backend in /setup."""
+    backend = kb.SITE.get("backend", "globus")
+    if backend != "local":
+        sys.exit("REFUSED  this site's backend is {!r}, not 'local'.\n"
+                 "scan_local.py runs only on a site that chose a local or mounted "
+                 "directory\nin /setup (resources/site.json: \"backend\": \"local\"). "
+                 "Use scan_endpoint.py for Globus.".format(backend))
 
 
 def default_label() -> str:
@@ -212,18 +238,92 @@ def walk(
 
 def resolve_roots(paths: List[str]) -> List[str]:
     configured = configured_roots()
+    if not configured:
+        sys.exit("no local_roots in resources/site.json -- run /setup to choose them")
     roots = [_dir(p) for p in paths] or configured
-    if not roots:
-        sys.exit("no roots: pass --path, or set local_roots in resources/site.json")
     for r in roots:
         if not os.path.isdir(r):
             sys.exit("not a directory: {}".format(r))
-    if configured:
-        outside = [r for r in roots if not any(r.startswith(c) for c in configured)]
-        if outside:
-            sys.exit("outside site.json local_roots ({}):\n  {}".format(
-                ", ".join(configured), "\n  ".join(outside)))
+    _inside(roots, configured)
     return roots
+
+
+def _inside(paths: List[str], configured: List[str]) -> None:
+    outside = [p for p in paths if not any(p.startswith(c) for c in configured)]
+    if outside:
+        sys.exit("outside site.json local_roots ({}):\n  {}".format(
+            ", ".join(configured), "\n  ".join(outside)))
+
+
+def zip_members(zip_path: str) -> Iterator[dict]:
+    """One archive's contents, from its central directory on disk.
+
+    Records match zip_index.py's: <archive>.zip!/<member> paths, so
+    build_index.py, search and export_snapshot.py treat them the same.
+    The archive is opened 'rb'; zipfile reads the index, never member data.
+    """
+    try:
+        fh = open(zip_path, "rb")
+    except OSError as err:
+        yield {"kind": "error", "path": zip_path,
+               "code": type(err).__name__, "message": str(err)[:300]}
+        return
+    with fh:
+        try:
+            zf = zipfile.ZipFile(fh)
+        except (zipfile.BadZipFile, OSError) as err:
+            yield {"kind": "error", "path": zip_path,
+                   "code": type(err).__name__, "message": str(err)[:300]}
+            return
+        base_depth = zip_path.count("/")
+        n_files = n_dirs = 0
+        for info in zf.infolist():
+            full = zip_path + ZIP_SEP + info.filename
+            depth = base_depth + info.filename.rstrip("/").count("/")
+            if info.is_dir():
+                n_dirs += 1
+                yield {"kind": "dir", "path": full,
+                       "name": info.filename.rstrip("/").split("/")[-1] + "/",
+                       "depth": depth, "archive": zip_path}
+                continue
+            n_files += 1
+            name = info.filename.split("/")[-1]
+            try:
+                mtime = datetime(*info.date_time).strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                mtime = ""
+            yield {"kind": "file", "path": full, "name": name, "ext": kb._ext(name),
+                   "size": info.file_size, "compressed_size": info.compress_size,
+                   "last_modified": mtime, "depth": depth, "archive": zip_path,
+                   "anchors": kb.extract_anchors(full)}
+    print("zip: {} | {:,} files, {:,} dirs | local, {:,}-byte archive".format(
+        zip_path, n_files, n_dirs, os.path.getsize(zip_path)), flush=True)
+
+
+def list_archives(zips: List[str], label: str, allow_writable: bool, out: Path) -> None:
+    zips = [os.path.abspath(os.path.expanduser(z)) for z in zips]
+    bad = [z for z in zips if not z.lower().endswith(".zip") or not os.path.isfile(z)]
+    if bad:
+        sys.exit("not .zip files: {}".format(", ".join(bad)))
+    _inside(zips, configured_roots())
+    try:
+        access = guard(sorted({os.path.dirname(z) + "/" for z in zips}), allow_writable)
+    except WritableRoot as err:
+        sys.exit("REFUSED  " + str(err))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    header = {"kind": "scan_meta", "backend": "local", "source": "zip_central_directory",
+              "ts": kb.utc_now(), "run_id": kb.new_run_id(), "collection_id": label,
+              "roots": zips, "depth": None, "types": [], "exclude": [],
+              "write_access": access}
+    with out.open("w", encoding="utf-8") as fh:
+        fh.write(json.dumps(header, sort_keys=True) + "\n")
+        for z in zips:
+            for rec in zip_members(z):
+                if rec["kind"] == "error":
+                    print("zip: {} UNREADABLE -- {}: {}".format(
+                        z, rec["code"], rec["message"]), flush=True)
+                fh.write(json.dumps(rec, sort_keys=True) + "\n")
+    print("inventory -> {}".format(out))
 
 
 def main() -> None:
@@ -246,8 +346,20 @@ def main() -> None:
                          "researcher's approval")
     ap.add_argument("--check", action="store_true",
                     help="report whether each root is read-only, then exit")
+    ap.add_argument("--zip", action="append", default=[],
+                    help="list the contents of this .zip instead of walking; "
+                         "repeatable, needs --out")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     args = ap.parse_args()
+
+    require_local_backend()
+
+    if args.zip:
+        if args.out == str(DEFAULT_OUT):
+            sys.exit("--zip needs its own --out (e.g. knowledge/inventory_zip_<name>.jsonl)")
+        list_archives(args.zip, args.label or default_label(), args.allow_writable,
+                      Path(args.out))
+        return
 
     roots = resolve_roots(args.path)
 

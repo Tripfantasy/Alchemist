@@ -56,6 +56,16 @@ Reading files under `<agent>/` normally causes Claude Code to load that nested
 
 ## Step 3 — Verify the environment
 
+For `forage` and `sigil`, first:
+
+```bash
+python3 ../.claude/lib/setup.py status <agent>
+```
+
+If it says NEEDS SETUP, stop and hand back `/setup` instead of starting the
+run: a half-configured agent fails partway in. (sigil's "later" for a missing
+snapshot is not a failure; its own workflow handles that.) Then:
+
 ```bash
 python3 ../.claude/lib/agent_env.py check <agent>
 ```
